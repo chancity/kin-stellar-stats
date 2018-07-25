@@ -148,7 +148,7 @@ namespace kin_stellar_stats.Services.Impl
                 await context.SaveChangesAsync();
 
                 await context.Database.ExecuteSqlCommandAsync(
-                    $"INSERT INTO paginations SET CursorType = 'flattenedoperation'," +
+                    $"INSERT INTO Paginations SET CursorType = 'flattenedoperation'," +
                     $" PagingToken = '{databaseCommand.Operation.PagingToken}'" +
                     $" ON DUPLICATE KEY UPDATE PagingToken = IF({databaseCommand.Operation.PagingToken} > PagingToken, '{databaseCommand.Operation.PagingToken}', PagingToken)");
 
