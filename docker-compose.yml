@@ -1,0 +1,8 @@
+version: '3.4'
+
+services:
+  kin_stellar_stats:
+    image: ${DOCKER_REGISTRY}kinstellarstats
+    build:
+      context: .
+      dockerfile: kin-stellar-stats/Dockerfile
