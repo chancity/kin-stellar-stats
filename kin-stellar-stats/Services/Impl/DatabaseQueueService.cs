@@ -64,7 +64,7 @@ namespace kin_stellar_stats.Services.Impl
             Task.Factory.StartNew(CommandQueueLoop, TaskCreationOptions.LongRunning);
         }
 
-        private void CommandQueueLoop()
+        private async void CommandQueueLoop()
         {
             while (true)
             {
@@ -73,12 +73,12 @@ namespace kin_stellar_stats.Services.Impl
                 {
                     if (_queueCounter >= _maxQueue) _queueNotifier1.WaitOne();
                     if (!_databaseCommandQueue.TryDequeue(out DatabaseQueueModel command)) continue;
-                    HandleDatabaseQueueModel(command);
+                    await HandleDatabaseQueueModel(command);
 
                 }
             }
         }
-        public async void HandleDatabaseQueueModel(DatabaseQueueModel databaseCommand)
+        public async Task HandleDatabaseQueueModel(DatabaseQueueModel databaseCommand)
         {
             Interlocked.Increment(ref _queueCounter);
             ManagementContext context = null;
