@@ -47,7 +47,7 @@ namespace kin_stellar_stats.Services.Impl
             _operationsRequestBuilder = _server.Operations.Cursor(pagingToken).Limit(20);
             _eventSource = _operationsRequestBuilder.Stream(async (sender, response) =>
             {
-                _logger.Debug($"Got operation response {response.Id}");
+                //_logger.Debug($"Got operation response {response.Id}");
                 try
                 {
                     var operation = response;
@@ -75,7 +75,7 @@ namespace kin_stellar_stats.Services.Impl
                     }
 
                     var toQueue = new DatabaseQueueModel(flattenOperation, kinAccounts.ToArray());
-                    _logger.Debug($"Enqueuing {toQueue.ToString()}");
+                    //_logger.Debug($"Enqueuing {toQueue.ToString()}");
                     _databaseQueueService.EnqueueCommand(toQueue);
 
                      // if (!string.IsNullOrEmpty(response.PagingToken))
