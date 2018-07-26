@@ -123,7 +123,6 @@ namespace kin_stellar_stats.Services.Impl
 
 
                             context.KinAccounts.Update(kinAccount);
-                            Console.WriteLine("Update");
                         }
                         else
                         {
@@ -150,7 +149,6 @@ namespace kin_stellar_stats.Services.Impl
 
                             account.LastActive = databaseCommand.Operation.CreatedAt;
                             await context.KinAccounts.AddAsync(account);
-                            Console.WriteLine("Add");
                         }
                     }
 
