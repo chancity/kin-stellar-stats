@@ -100,7 +100,6 @@ namespace kin_stellar_stats.Services.Impl
                             if (databaseCommand.Operation is FlattenCreateAccountOperation)
                             {
                                 kinAccount.CreatedAt = databaseCommand.Operation.CreatedAt;
-                                kinAccount.Memo = databaseCommand.Operation.Memo;
                             }
 
                             if (databaseCommand.Operation is FlattenPaymentOperation aa)
@@ -118,6 +117,11 @@ namespace kin_stellar_stats.Services.Impl
                                     
                             }
 
+                            if (!string.IsNullOrEmpty(databaseCommand.Operation.Memo))
+                            {
+                                kinAccount.Memo = databaseCommand.Operation.Memo;
+                            }
+                          
                             kinAccount.Balance = account.Balance;
                             kinAccount.LastActive = databaseCommand.Operation.CreatedAt;
 
