@@ -15,17 +15,15 @@ namespace kin_stellar_stats.Migrations
                     Id = table.Column<long>(nullable: false)
                         .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
                     CreatedAt = table.Column<DateTimeOffset>(nullable: false),
-                    PagingToken = table.Column<string>(nullable: true),
                     SourceAccount = table.Column<string>(nullable: true),
-                    TransactionHash = table.Column<string>(nullable: true),
                     Type = table.Column<string>(nullable: true),
                     EffectType = table.Column<string>(nullable: true),
                     Memo = table.Column<string>(nullable: true),
                     Discriminator = table.Column<string>(nullable: false),
                     Account = table.Column<string>(nullable: true),
                     Funder = table.Column<string>(nullable: true),
-                    StartingBalance = table.Column<string>(nullable: true),
-                    Amount = table.Column<string>(nullable: true),
+                    StartingBalance = table.Column<double>(nullable: true),
+                    Amount = table.Column<double>(nullable: true),
                     AssetCode = table.Column<string>(nullable: true),
                     AssetIssuer = table.Column<string>(nullable: true),
                     AssetType = table.Column<string>(nullable: true),
@@ -43,10 +41,11 @@ namespace kin_stellar_stats.Migrations
                 {
                     Id = table.Column<string>(nullable: false),
                     Memo = table.Column<string>(nullable: true),
+                    Balance = table.Column<double>(nullable: false),
                     AccountCreditedCount = table.Column<int>(nullable: false),
                     AccountDebitedCount = table.Column<int>(nullable: false),
-                    AccountCreditedVolume = table.Column<int>(nullable: false),
-                    AccountDebitedVolume = table.Column<int>(nullable: false),
+                    AccountCreditedVolume = table.Column<double>(nullable: false),
+                    AccountDebitedVolume = table.Column<double>(nullable: false),
                     CreatedAt = table.Column<DateTimeOffset>(nullable: false),
                     LastActive = table.Column<DateTimeOffset>(nullable: false)
                 },
@@ -60,32 +59,11 @@ namespace kin_stellar_stats.Migrations
                 columns: table => new
                 {
                     CursorType = table.Column<string>(nullable: false),
-                    PagingToken = table.Column<string>(nullable: true)
+                    PagingToken = table.Column<long>(nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Paginations", x => x.CursorType);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "FlattenedBalance",
-                columns: table => new
-                {
-                    KinAccountId = table.Column<string>(nullable: false),
-                    AssetCode = table.Column<string>(nullable: true),
-                    AssetType = table.Column<string>(nullable: false),
-                    BalanceString = table.Column<string>(nullable: true),
-                    Limit = table.Column<string>(nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_FlattenedBalance", x => new { x.KinAccountId, x.AssetType });
-                    table.ForeignKey(
-                        name: "FK_FlattenedBalance_KinAccounts_KinAccountId",
-                        column: x => x.KinAccountId,
-                        principalTable: "KinAccounts",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(
@@ -98,16 +76,13 @@ namespace kin_stellar_stats.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "FlattenedBalance");
-
-            migrationBuilder.DropTable(
                 name: "FlattenedOperation");
 
             migrationBuilder.DropTable(
-                name: "Paginations");
+                name: "KinAccounts");
 
             migrationBuilder.DropTable(
-                name: "KinAccounts");
+                name: "Paginations");
         }
     }
 }

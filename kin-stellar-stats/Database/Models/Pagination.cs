@@ -3,6 +3,6 @@
     public class Pagination
     {
         public string CursorType { get; set; }
-        public string PagingToken { get; set; }
+        public long PagingToken { get; set; }
     }
 }

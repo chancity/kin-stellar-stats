@@ -22,7 +22,7 @@ namespace kin_stellar_stats.Migrations
                     b.Property<string>("CursorType")
                         .ValueGeneratedOnAdd();
 
-                    b.Property<string>("PagingToken");
+                    b.Property<long>("PagingToken");
 
                     b.HasKey("CursorType");
 
@@ -30,23 +30,6 @@ namespace kin_stellar_stats.Migrations
                         .IsUnique();
 
                     b.ToTable("Paginations");
-                });
-
-            modelBuilder.Entity("kin_stellar_stats.Database.StellarObjectWrappers.FlattenedBalance", b =>
-                {
-                    b.Property<string>("KinAccountId");
-
-                    b.Property<string>("AssetType");
-
-                    b.Property<string>("AssetCode");
-
-                    b.Property<string>("BalanceString");
-
-                    b.Property<string>("Limit");
-
-                    b.HasKey("KinAccountId", "AssetType");
-
-                    b.ToTable("FlattenedBalance");
                 });
 
             modelBuilder.Entity("kin_stellar_stats.Database.StellarObjectWrappers.FlattenedOperation", b =>
@@ -63,11 +46,7 @@ namespace kin_stellar_stats.Migrations
 
                     b.Property<string>("Memo");
 
-                    b.Property<string>("PagingToken");
-
                     b.Property<string>("SourceAccount");
-
-                    b.Property<string>("TransactionHash");
 
                     b.Property<string>("Type");
 
@@ -85,11 +64,13 @@ namespace kin_stellar_stats.Migrations
 
                     b.Property<int>("AccountCreditedCount");
 
-                    b.Property<int>("AccountCreditedVolume");
+                    b.Property<double>("AccountCreditedVolume");
 
                     b.Property<int>("AccountDebitedCount");
 
-                    b.Property<int>("AccountDebitedVolume");
+                    b.Property<double>("AccountDebitedVolume");
+
+                    b.Property<double>("Balance");
 
                     b.Property<DateTimeOffset>("CreatedAt");
 
@@ -110,7 +91,7 @@ namespace kin_stellar_stats.Migrations
 
                     b.Property<string>("Funder");
 
-                    b.Property<string>("StartingBalance");
+                    b.Property<double>("StartingBalance");
 
                     b.ToTable("FlattenCreateAccountOperation");
 
@@ -121,7 +102,7 @@ namespace kin_stellar_stats.Migrations
                 {
                     b.HasBaseType("kin_stellar_stats.Database.StellarObjectWrappers.FlattenedOperation");
 
-                    b.Property<string>("Amount");
+                    b.Property<double>("Amount");
 
                     b.Property<string>("AssetCode");
 
@@ -136,14 +117,6 @@ namespace kin_stellar_stats.Migrations
                     b.ToTable("FlattenPaymentOperation");
 
                     b.HasDiscriminator().HasValue("FlattenPaymentOperation");
-                });
-
-            modelBuilder.Entity("kin_stellar_stats.Database.StellarObjectWrappers.FlattenedBalance", b =>
-                {
-                    b.HasOne("kin_stellar_stats.Database.StellarObjectWrappers.KinAccount")
-                        .WithMany("FlattenedBalance")
-                        .HasForeignKey("KinAccountId")
-                        .OnDelete(DeleteBehavior.Cascade);
                 });
 #pragma warning restore 612, 618
         }

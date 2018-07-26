@@ -39,10 +39,12 @@ namespace kin_stellar_stats.Services.Impl
 
         public async Task StartAsync()
         {
-            string pagingToken = await GetCurrentCursorFromDatabase("FlattenedOperation");
+            long pagingTokenLong = await GetCurrentCursorFromDatabase("FlattenedOperation");
+            string pagingToken = pagingTokenLong.ToString();
+
             _logger.Debug($"{nameof(pagingToken)}: {pagingToken}");
 
-            await DeleteLastCursorId(pagingToken);
+            await DeleteLastCursorId(pagingTokenLong);
 
             _operationsRequestBuilder = _server.Operations.Cursor(pagingToken).Limit(20);
             _eventSource = _operationsRequestBuilder.Stream(async (sender, response) =>
@@ -75,14 +77,7 @@ namespace kin_stellar_stats.Services.Impl
                     }
 
                     var toQueue = new DatabaseQueueModel(flattenOperation, kinAccounts.ToArray());
-                    //_logger.Debug($"Enqueuing {toQueue.ToString()}");
                     _databaseQueueService.EnqueueCommand(toQueue);
-
-                     // if (!string.IsNullOrEmpty(response.PagingToken))
-                     // {
-                     //          _eventSource.Headers.Remove("Last-Event-Id");
-                     //     _eventSource.Headers.Add("Last-Event-Id", response.PagingToken);
-                     // }
 
                 }
                 catch (Exception e)
@@ -97,7 +92,7 @@ namespace kin_stellar_stats.Services.Impl
 
         }
 
-        private async Task DeleteLastCursorId(string pagingToken, params string[] operationTypes)
+        private async Task DeleteLastCursorId(long pagingToken, params string[] operationTypes)
         {
             if (operationTypes.Length == 0)
             {
@@ -106,16 +101,16 @@ namespace kin_stellar_stats.Services.Impl
 
             List<Task<int>> tasks = operationTypes
                 .Select(async operationType =>
-                    await _managementContext.Database.ExecuteSqlCommandAsync(string.Format("DELETE FROM {0} WHERE PagingToken = '{1}';", operationType, pagingToken)))
+                    await _managementContext.Database.ExecuteSqlCommandAsync(string.Format("DELETE FROM {0} WHERE Id = {1};", operationType, pagingToken)))
                 .ToList();
 
             await Task.WhenAll(tasks);
         }
 
-        private async Task<string> GetCurrentCursorFromDatabase(string cursorType)
+        private async Task<long> GetCurrentCursorFromDatabase(string cursorType)
         {
             var pagination = await _managementContext.Paginations.AsNoTracking().SingleOrDefaultAsync(x => x.CursorType == cursorType);
-            return pagination?.PagingToken ?? "0";
+            return pagination?.PagingToken ?? 0;
         }
     }
 }

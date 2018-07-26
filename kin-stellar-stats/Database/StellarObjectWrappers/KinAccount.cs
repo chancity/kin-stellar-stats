@@ -8,28 +8,32 @@ namespace kin_stellar_stats.Database.StellarObjectWrappers
     {
         public string Id { get; set; }
         public string Memo { get; set; }
-        public virtual ICollection<FlattenedBalance> FlattenedBalance { get; set; }
+        public double Balance { get; set; } = 0;
         public int AccountCreditedCount { get; set; } = 0;
         public int AccountDebitedCount { get; set; } = 0;
-        public int AccountCreditedVolume { get; set; } = 0;
-        public int AccountDebitedVolume { get; set; } = 0;
+        public double AccountCreditedVolume { get; set; } = 0;
+        public double AccountDebitedVolume { get; set; } = 0;
         public DateTimeOffset CreatedAt { get; set; }
         public DateTimeOffset LastActive { get; set; }
 
 
         public KinAccount()
         {
-            FlattenedBalance = new List<FlattenedBalance>();
+            Balance = 0;
         }
 
         public KinAccount(AccountResponse accountResponse)
         {
             Id = accountResponse.KeyPair.AccountId;
-            FlattenedBalance = new List<FlattenedBalance>();
 
             foreach (Balance accountResponseBalance in accountResponse.Balances)
             {
-                FlattenedBalance.Add(new FlattenedBalance(accountResponseBalance));
+                if (accountResponseBalance.AssetCode == "KIN")
+                {
+                    double.TryParse(accountResponseBalance.BalanceString, out var balanceN);
+                    Balance = balanceN;
+                }
+                
             }
         }
 

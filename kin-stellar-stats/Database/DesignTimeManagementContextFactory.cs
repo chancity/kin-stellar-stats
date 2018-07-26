@@ -15,7 +15,7 @@ namespace kin_stellar_stats.Database
             Dictionary<string, string> defaultConfiguration = new Dictionary<string, string>
             {
                 {"StellarService:HorizonHostname", "https://horizon-kin-ecosystem.kininfrastructure.com/"},
-                {"DatabaseService:ConnectionString", "server=localhost;database=kin_test;uid=root;pwd=password"},
+                {"DatabaseService:ConnectionString", "server=localhost;database=kin_test;uid=root;pwd=giveME@ccess"},
                 {"DatabaseService:RequestPerMinute", "3000"}
             };
 

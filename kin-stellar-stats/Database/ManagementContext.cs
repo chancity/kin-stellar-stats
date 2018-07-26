@@ -27,30 +27,22 @@ namespace kin_stellar_stats.Database
         }
         protected override void OnModelCreating(ModelBuilder builder)
         {
-            builder.Entity<FlattenedBalance>().HasKey(c => new {c.KinAccountId, c.AssetType});
-
             builder.Entity<Pagination>()
                 .HasIndex(c => c.CursorType).IsUnique();
+
             builder.Entity<Pagination>()
                 .HasKey(c => c.CursorType).Metadata
                 .IsPrimaryKey();
-
-            builder.Entity<KinAccount>()
-                .HasMany(c => c.FlattenedBalance);
 
 
 
 
             base.OnModelCreating(builder);
-            // Customize the ASP.NET Identity model and override the defaults if needed.
-            // For example, you can rename the ASP.NET Identity table names and more.
-            // Add your customizations after calling base.OnModelCreating(builder);
         }
 
         public DbSet<FlattenedOperation> FlattenedOperation { get; set; }
         public DbSet<FlattenPaymentOperation> FlattenPaymentOperation { get; set; }
         public DbSet<FlattenCreateAccountOperation> FlattenCreateAccountOperation { get; set; }
-        public DbSet<FlattenedBalance> FlattenedBalance { get; set; }
         public DbSet<KinAccount> KinAccounts { get; set; }
         public DbSet<Pagination> Paginations { get; set; }
     }

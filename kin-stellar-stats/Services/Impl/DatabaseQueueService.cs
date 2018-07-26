@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
+using Chaos.NaCl;
 using kin_stellar_stats.Database;
 using kin_stellar_stats.Database.Models;
 using kin_stellar_stats.Database.StellarObjectWrappers;
@@ -92,8 +93,7 @@ namespace kin_stellar_stats.Services.Impl
                 
                 foreach (KinAccount account in databaseCommand.KinAccounts)
                 {
-
-                        var kinAccount = await context.KinAccounts.Include(c => c.FlattenedBalance).SingleOrDefaultAsync(c => c.Id == account.Id);
+                        var kinAccount = await context.KinAccounts.SingleOrDefaultAsync(c => c.Id == account.Id);
 
                         if (kinAccount != null)
                         {
@@ -102,23 +102,28 @@ namespace kin_stellar_stats.Services.Impl
                                 kinAccount.CreatedAt = databaseCommand.Operation.CreatedAt;
                                 kinAccount.Memo = databaseCommand.Operation.Memo;
                             }
-                            
-                            context.FlattenedBalance.RemoveRange(kinAccount.FlattenedBalance);
 
-                            kinAccount.FlattenedBalance = account.FlattenedBalance;
+                            if (databaseCommand.Operation is FlattenPaymentOperation aa)
+                            {
+                                if (kinAccount.Id.Equals(aa.To))
+                                {
+                                    kinAccount.AccountCreditedCount += 1;
+                                    kinAccount.AccountCreditedVolume += aa.Amount;
+                                }
+                                else if (kinAccount.Id.Equals(aa.From))
+                                {
+                                    kinAccount.AccountDebitedCount += 1;
+                                    kinAccount.AccountDebitedVolume += aa.Amount;
+                                }
+                                    
+                            }
+
+                            kinAccount.Balance = account.Balance;
                             kinAccount.LastActive = databaseCommand.Operation.CreatedAt;
-                            context.KinAccounts.Update(kinAccount);
 
-                          //foreach (FlattenedBalance flattenedBalance in kinAccount.FlattenedBalance)
-                          //{
-                          //    var balance = await context.FlattenedBalance.SingleOrDefaultAsync(c => c.KinAccountId == flattenedBalance.KinAccountId && c.AssetType == flattenedBalance.AssetType);
-                          //
-                          //    if (balance != null)
-                          //    {
-                          //        balance.BalanceString = flattenedBalance.BalanceString;
-                          //        balance.Limit = flattenedBalance.Limit;
-                          //    }
-                          //}
+
+                            context.KinAccounts.Update(kinAccount);
+                            Console.WriteLine("Update");
                         }
                         else
                         {
@@ -126,15 +131,30 @@ namespace kin_stellar_stats.Services.Impl
                             {
                                 account.CreatedAt = databaseCommand.Operation.CreatedAt;
                                 account.Memo = databaseCommand.Operation.Memo;
-                        }
+                            }
+
+                            if (databaseCommand.Operation is FlattenPaymentOperation aa)
+                            {
+                                if (account.Id.Equals(aa.To))
+                                {
+                                    account.AccountCreditedCount += 1;
+                                    account.AccountCreditedVolume += aa.Amount;
+                                }
+                                else if (account.Id.Equals(aa.From))
+                                {
+                                    account.AccountDebitedCount += 1;
+                                    account.AccountDebitedVolume += aa.Amount;
+                                }
+
+                            }
 
                             account.LastActive = databaseCommand.Operation.CreatedAt;
                             await context.KinAccounts.AddAsync(account);
+                            Console.WriteLine("Add");
                         }
                     }
 
-
-                     var op = await context.FlattenedOperation.SingleOrDefaultAsync(c => c.Id == databaseCommand.Operation.Id);
+                var op = await context.FlattenedOperation.SingleOrDefaultAsync(c => c.Id == databaseCommand.Operation.Id);
 
                      if (op != null)
                      {
@@ -149,8 +169,8 @@ namespace kin_stellar_stats.Services.Impl
 
                 await context.Database.ExecuteSqlCommandAsync(
                     $"INSERT INTO Paginations SET CursorType = 'flattenedoperation'," +
-                    $" PagingToken = '{databaseCommand.Operation.PagingToken}'" +
-                    $" ON DUPLICATE KEY UPDATE PagingToken = IF({databaseCommand.Operation.PagingToken} > PagingToken, '{databaseCommand.Operation.PagingToken}', PagingToken)");
+                    $" PagingToken = {databaseCommand.Operation.Id}" +
+                    $" ON DUPLICATE KEY UPDATE PagingToken = IF({databaseCommand.Operation.Id} > PagingToken, '{databaseCommand.Operation.Id}', PagingToken)");
 
             }
             catch (Exception e)

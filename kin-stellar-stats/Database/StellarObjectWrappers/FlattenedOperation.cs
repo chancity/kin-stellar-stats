@@ -18,23 +18,23 @@ namespace kin_stellar_stats.Database.StellarObjectWrappers
             {
                 return new FlattenPaymentOperation(paymentOperation, transactionResponse, effectResponse);
             }
-            else if (operationResponse is CreateAccountOperationResponse createAccountOperation)
+
+            if (operationResponse is CreateAccountOperationResponse createAccountOperation)
             {
                 return new FlattenCreateAccountOperation(createAccountOperation, transactionResponse, effectResponse);
             }
-            else
-            {
-                return new FlattenedOperation(operationResponse, transactionResponse, effectResponse);
-            }
+
+
+            return new FlattenedOperation(operationResponse, transactionResponse, effectResponse);
         }
     }
     public class FlattenedOperation
     {
         public long Id { get; set; }
         public DateTimeOffset CreatedAt { get; set; }
+        [NotMapped]
         public string PagingToken { get; set; }
         public string SourceAccount { get; set; }
-        public string TransactionHash { get; set; }
         public string Type { get; set; }
         public string EffectType { get; set; }
         public string Memo { get; set; }
@@ -47,7 +47,6 @@ namespace kin_stellar_stats.Database.StellarObjectWrappers
             CreatedAt = DateTimeOffset.Parse(operationResponse.CreatedAt);
             PagingToken = operationResponse.PagingToken;
             SourceAccount = operationResponse.SourceAccount.AccountId;
-            TransactionHash = operationResponse.TransactionHash;
             Type = operationResponse.Type;
             Memo = transactionResponse.MemoStr;
             EffectType = effectResponse.Type;
@@ -56,7 +55,7 @@ namespace kin_stellar_stats.Database.StellarObjectWrappers
 
     public class FlattenPaymentOperation : FlattenedOperation
     {
-        public string Amount { get; set; }
+        public double Amount { get; set; }
         public string AssetCode { get; set; }
         public string AssetIssuer { get; set; }
         public string AssetType { get; set; }
@@ -67,7 +66,8 @@ namespace kin_stellar_stats.Database.StellarObjectWrappers
 
         public FlattenPaymentOperation(PaymentOperationResponse operationResponse, TransactionResponse transactionResponse, EffectResponse effectResponse) : base(operationResponse, transactionResponse, effectResponse)
         {
-            Amount = operationResponse.Amount;
+            double.TryParse(operationResponse.Amount, out var amountN);
+            Amount = amountN;
             AssetCode = operationResponse.AssetCode;
             AssetIssuer = operationResponse.AssetIssuer;
             AssetType = operationResponse.AssetType;
@@ -80,7 +80,7 @@ namespace kin_stellar_stats.Database.StellarObjectWrappers
     {
         public string Account { get; set; }
         public string Funder { get; set; }
-        public string StartingBalance { get; set; }
+        public double StartingBalance { get; set; }
 
         public FlattenCreateAccountOperation() { }
 
@@ -88,7 +88,8 @@ namespace kin_stellar_stats.Database.StellarObjectWrappers
         {
             Account = operationResponse.Account.AccountId;
             Funder = operationResponse.Funder.AccountId;
-            StartingBalance = operationResponse.StartingBalance;
+            double.TryParse(operationResponse.StartingBalance, out var startingBalance);
+            StartingBalance = startingBalance;
         }
     }
 }
