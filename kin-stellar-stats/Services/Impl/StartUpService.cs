@@ -20,7 +20,7 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
         {
             _config = config;
             _stellarService = stellarService;
-            _databaseQueueService = databaseQueueService;
+            //_databaseQueueService = databaseQueueService;
             _managementContext = managementContext;
             _logger = DicordLogFactory.GetLogger<StartupService>(GlobalVariables.DiscordId, GlobalVariables.DiscordToken);
         }
@@ -31,8 +31,8 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
             {
                 try
                 {
-                    await _managementContext.Database.EnsureCreatedAsync();
-                    await _managementContext.Database.MigrateAsync();
+                 //   await _managementContext.Database.EnsureCreatedAsync();
+                 //   await _managementContext.Database.MigrateAsync();
                 }
                 catch (Exception e)
                 {
@@ -40,7 +40,7 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
                 }
 
 
-                _databaseQueueService.StartAsync();
+               // _databaseQueueService.StartAsync();
                 await _stellarService.StartAsync();
                 _logger.LogInformation("Startup service has completed");
             }

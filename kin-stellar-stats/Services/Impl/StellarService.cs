@@ -23,18 +23,19 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
     {
         private readonly IConfigurationRoot _config;
         private readonly ManagementContext _managementContext;
-        private readonly DatabaseQueueService _databaseQueueService;
+        //private readonly DatabaseQueueService _databaseQueueService;
         private readonly IDiscordLogger _logger;
         private readonly Server _server;
         private IEventSource _eventSource;
         private OperationsRequestBuilder _operationsRequestBuilder;
+        private readonly StatsManager _statsManager;
 
         public StellarService(IConfigurationRoot config, ManagementContext managementContext, DatabaseQueueService databaseQueueService)
         {
             _config = config;
             _managementContext = managementContext;
-            _databaseQueueService = databaseQueueService;
-
+            //_databaseQueueService = databaseQueueService;
+            _statsManager = new StatsManager();
             _logger = DicordLogFactory.GetLogger<StellarService>(GlobalVariables.DiscordId,
                 GlobalVariables.DiscordToken);
 
@@ -46,6 +47,7 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
         private DateTime? _sendQueueInfoMessageTime;
         private long _totalRequest = 0;
         private Stopwatch _startTime = new Stopwatch();
+
         public async Task StartAsync()
         {
             _startTime.Start();
@@ -91,6 +93,8 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
                     var rpm = _startTime.Elapsed.Minutes > 0 ? $"{_totalRequest / _startTime.Elapsed.Minutes} request handled per minute ({_startTime.Elapsed.Minutes}m)" : "";
                     if(!string.IsNullOrEmpty(rpm))
                         _logger.LogInformation($"{rpm}");
+
+                    _statsManager.OutPutToDiscord();
                 }
             });
 
@@ -109,28 +113,28 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
 
 
                 var flattenOperation = FlattenOperationFactory.GibeFlattenedOperation(operation, transactions, effect.Records.FirstOrDefault());
-                var kinAccounts = new HashSet<KinAccount>();
+               // var kinAccounts = new HashSet<KinAccount>();
 
 
-                if (response is PaymentOperationResponse paymentOperation)
-                {
-                    var accountTo = await _server.Accounts.Account(paymentOperation.To).ConfigureAwait(false);
-                    kinAccounts.Add(new KinAccount(accountTo));
+              // if (response is PaymentOperationResponse paymentOperation)
+              // {
+              //     var accountTo = await _server.Accounts.Account(paymentOperation.To).ConfigureAwait(false);
+              //     kinAccounts.Add(new KinAccount(accountTo));
+              //
+              //     var accountFrom = await _server.Accounts.Account(paymentOperation.From).ConfigureAwait(false);
+              //     kinAccounts.Add(new KinAccount(accountFrom));
+              // }
+              // else if (response is CreateAccountOperationResponse createAccountOperation)
+              // {
+              //     var accountCreated = await _server.Accounts.Account(createAccountOperation.Account).ConfigureAwait(false);
+              //     var account = new KinAccount(accountCreated);
+              //     kinAccounts.Add(account);
+              // }
 
-                    var accountFrom = await _server.Accounts.Account(paymentOperation.From).ConfigureAwait(false);
-                    kinAccounts.Add(new KinAccount(accountFrom));
-                }
-                else if (response is CreateAccountOperationResponse createAccountOperation)
-                {
-                    var accountCreated = await _server.Accounts.Account(createAccountOperation.Account).ConfigureAwait(false);
-                    var account = new KinAccount(accountCreated);
-                    kinAccounts.Add(account);
-                }
+               // var toQueue = new DatabaseQueueModel(flattenOperation, kinAccounts.ToArray());
+               // _databaseQueueService.EnqueueCommand(toQueue);
 
-                var toQueue = new DatabaseQueueModel(flattenOperation, kinAccounts.ToArray());
-                _databaseQueueService.EnqueueCommand(toQueue);
-
-
+                _statsManager.HandleOperation(flattenOperation);
             }
             catch (Exception e)
             {
