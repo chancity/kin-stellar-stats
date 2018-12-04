@@ -1,6 +1,6 @@
 ﻿using System.Threading.Tasks;
 
-namespace kin_stellar_stats.Services
+namespace Kin.Horizon.Api.Poller.Services
 {
     public interface IStellarService
     {

@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
-using kin_stellar_stats.Database;
-using kin_stellar_stats.Services;
+using discord_web_hook_logger;
 using Kin.Horizon.Api.Poller.Database;
+using Kin.Horizon.Api.Poller.Services;
 using Kin.Horizon.Api.Poller.Services.Impl;
 using log4net;
 using log4net.Config;
@@ -13,48 +13,44 @@ using log4net.Repository;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
-namespace kin_stellar_stats
+namespace Kin.Horizon.Api.Poller
 {
+    public static class GlobalVariables
+    {
+        public static long DiscordId;
+        public static string DiscordToken;
+    }
     public class Startup
     {
-        private static readonly ILog Logger;
         private readonly IConfigurationRoot _configuration;
+        private static readonly IDiscordLogger Logger;
 
         static Startup()
         {
             ILoggerRepository logRepository = LogManager.GetRepository(Assembly.GetEntryAssembly());
-            XmlConfigurator.Configure(logRepository, new FileInfo("kin_stellar_stats.dll.config"));
-            Logger = LogManager.GetLogger(typeof(Startup));
+            XmlConfigurator.Configure(logRepository, new FileInfo("Kin.Horizon.Api.Poller.dll.config"));
+
+            Logger = DicordLogFactory.GetLogger<Startup>(GlobalVariables.DiscordId, GlobalVariables.DiscordToken);
+
         }
 
-        private Startup(string[] args)
+        private Startup(IConfigurationRoot config)
         {
-            Dictionary<string, string> defaultConfiguration = new Dictionary<string, string>
-            {
-                {"StellarService:HorizonHostname", "https://horizon-kin-ecosystem.kininfrastructure.com/"},
-                {"DatabaseService:ConnectionString", "server=localhost;database=kin_test;uid=root;pwd=password"},
-                {"DatabaseService:RequestPerMinute", "3000"}
-            };
-
-            ConfigurationBuilder builder = new ConfigurationBuilder();
-            builder.AddInMemoryCollection(defaultConfiguration).AddCommandLine(args);
-
-            _configuration = builder.Build();
+            _configuration = config;
         }
 
-        public static async Task RunAsync(string[] args)
+        public static async Task RunAsync(IConfigurationRoot config)
         {
             try
             {
-                Startup startup = new Startup(args);
+                Startup startup = new Startup(config);
                 await startup.RunAsync();
             }
             catch (Exception e)
             {
-                Logger.Error(e.Message, e);
-                Console.ReadLine();
-
+                Logger.LogCritical(e.Message, e);
                 throw;
             }
         }
@@ -65,8 +61,8 @@ namespace kin_stellar_stats
             ConfigureServices(services);
 
             ServiceProvider provider = services.BuildServiceProvider();
-
             provider.GetRequiredService<StartupService>().StartAsync();
+
             await Task.Delay(-1);
         }
 

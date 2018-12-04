@@ -1,35 +1,42 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
+using discord_web_hook_logger;
 using Kin.Horizon.Api.Poller.Database;
 using Kin.Horizon.Api.Poller.Database.StellarObjectWrappers;
 using Kin.Horizon.Api.Poller.Services.Model;
 using log4net;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace Kin.Horizon.Api.Poller.Services.Impl
 {
     public class DatabaseQueueService
     {
         private readonly ConcurrentQueue<DatabaseQueueModel> _databaseCommandQueue;
-        private readonly ILog _logger;
+        private readonly IDiscordLogger _logger;
         private readonly IConfigurationRoot _config;
         private readonly ManagementContext _managementContext;
         private readonly AutoResetEvent _queueNotifier = new AutoResetEvent(false);
         private readonly AutoResetEvent _queueNotifier1 = new AutoResetEvent(false);
-        private readonly System.Timers.Timer _timer = new System.Timers.Timer(50);
+        private readonly System.Timers.Timer _timer = new System.Timers.Timer(100);
         private int _queueCounter;
+        private long _itemsAdded;
         private int _maxQueue = 25;
+        private DateTime? _sendQueueInfoMessageTime;
+        private Stopwatch _sw;
 
         public DatabaseQueueService(IConfigurationRoot config, ManagementContext managementContext)
         {
             _config = config;
+            _sw = new Stopwatch();
             _managementContext = managementContext;
             _queueCounter = 0;
-            _logger = LogManager.GetLogger(typeof(StellarService));
+            _logger = DicordLogFactory.GetLogger<DatabaseQueueService>(GlobalVariables.DiscordId, GlobalVariables.DiscordToken);
             _databaseCommandQueue = new ConcurrentQueue<DatabaseQueueModel>();
         }
 
@@ -42,17 +49,30 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
 
         public void StartAsync()
         {
+
             _timer.Elapsed += Timer_tick;
             _timer.Enabled = true;
             _timer.Start();
+            _sw.Start();
             Start();
-            _logger.Debug("Database CommandQueueLoop service has started");
+            
+            _logger.LogInformation("Database CommandQueueLoop service has started");
         }
 
         private void Timer_tick(object sender, ElapsedEventArgs e)
         {
             if (_queueCounter < _maxQueue)
                 _queueNotifier1.Set();
+
+            if (_sendQueueInfoMessageTime == null || DateTime.Now >= _sendQueueInfoMessageTime)
+            {
+                _sendQueueInfoMessageTime = DateTime.Now.AddMinutes(1);
+                _logger.LogInformation($"There are currently {_databaseCommandQueue.Count} items in the db queue");
+
+                var msg = _sw.Elapsed.Minutes > 0 ? $"Saving {_itemsAdded / _sw.Elapsed.Minutes} db items per minute ({_sw.Elapsed.Minutes}m)" : "";
+                if (!string.IsNullOrEmpty(msg))
+                    _logger.LogInformation(msg);
+            }
         }
 
         private void Start()
@@ -69,8 +89,7 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
                 {
                     if (_queueCounter >= _maxQueue) _queueNotifier1.WaitOne();
                     if (!_databaseCommandQueue.TryDequeue(out DatabaseQueueModel command)) continue;
-                    HandleDatabaseQueueModel(command);
-
+                    HandleDatabaseQueueModel(command).Wait();
                 }
             }
         }
@@ -151,7 +170,7 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
                         }
                     }
 
-                var op = await context.FlattenedOperation.SingleOrDefaultAsync(c => c.Id == databaseCommand.Operation.Id);
+                    var op = await context.FlattenedOperation.SingleOrDefaultAsync(c => c.Id == databaseCommand.Operation.Id);
 
                      if (op != null)
                      {
@@ -175,13 +194,13 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
 
                     Interlocked.Exchange(ref _currentId, databaseCommand.Operation.Id);
                 }
-
+                Interlocked.Increment(ref _itemsAdded);
             }
             catch (Exception e)
             {
                 context?.Dispose();
                 EnqueueCommand(databaseCommand);
-                _logger.Error(e.Message, e);
+                _logger.LogDebug(e.Message, e);
             }
             finally
             {

@@ -1,7 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
+using discord_web_hook_logger;
 using kin_stellar_stats;
 using Kin.Stellar.Sdk;
 using log4net;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace Kin.Horizon.Api.Poller
 {
@@ -9,15 +13,27 @@ namespace Kin.Horizon.Api.Poller
     {
         public static void Main(string[] args)
         {
-            var _logger = LogManager.GetLogger(typeof(Program));
+            Dictionary<string, string> defaultConfiguration = new Dictionary<string, string>
+            {
+                {"StellarService:HorizonHostname", "https://horizon-kin-ecosystem.kininfrastructure.com/"},
+                {"DatabaseService:ConnectionString", "server=localhost;database=kin_test;uid=root;pwd=password"},
+                {"DatabaseService:RequestPerMinute", "3000"},
+                {"DiscordLogger:Id", "519614392057200670"},
+                {"DiscordLogger:Token", "qggUhn6skbpcLlrU0bq2WYQfuOCORsqVE9BAhmxZsJczPgzcoTpnvG8c8jeYLvbmYljr"}
+            };
 
+            ConfigurationBuilder builder = new ConfigurationBuilder();
+            builder.AddInMemoryCollection(defaultConfiguration).AddCommandLine(args).AddEnvironmentVariables();
+            var configuration = builder.Build();
 
-            var keyPair = KeyPair.Random();
+            GlobalVariables.DiscordId = long.Parse(configuration["DiscordLogger:Id"]);
+            GlobalVariables.DiscordToken = configuration["DiscordLogger:Token"];
 
-            Console.WriteLine(keyPair.Address);
-            _logger.Debug("Entered Main Entry Point");
-            Startup.RunAsync(args).Wait();
-            _logger.Debug("Exiting Main Entry Point");
+            var logger = DicordLogFactory.GetLogger<Program>(GlobalVariables.DiscordId, GlobalVariables.DiscordToken);
+
+            logger.LogInformation("Entered Main Entry Point");
+            Startup.RunAsync(configuration).Wait();
+            logger.LogInformation("Exiting Main Entry Point");
 
         }
     }

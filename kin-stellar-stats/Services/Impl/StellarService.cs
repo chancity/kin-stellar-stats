@@ -5,7 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using kin_stellar_stats.Services;
+using discord_web_hook_logger;
 using Kin.Horizon.Api.Poller.Database;
 using Kin.Horizon.Api.Poller.Database.StellarObjectWrappers;
 using Kin.Horizon.Api.Poller.Services.Model;
@@ -15,6 +15,7 @@ using Kin.Stellar.Sdk.responses.operations;
 using log4net;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace Kin.Horizon.Api.Poller.Services.Impl
 {
@@ -23,7 +24,7 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
         private readonly IConfigurationRoot _config;
         private readonly ManagementContext _managementContext;
         private readonly DatabaseQueueService _databaseQueueService;
-        private readonly ILog _logger;
+        private readonly IDiscordLogger _logger;
         private readonly Server _server;
         private IEventSource _eventSource;
         private OperationsRequestBuilder _operationsRequestBuilder;
@@ -33,22 +34,25 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
             _config = config;
             _managementContext = managementContext;
             _databaseQueueService = databaseQueueService;
-            _logger = LogManager.GetLogger(typeof(StellarService));
+
+            _logger = DicordLogFactory.GetLogger<StellarService>(GlobalVariables.DiscordId,
+                GlobalVariables.DiscordToken);
+
             ServicePointManager.DefaultConnectionLimit = 300;
-            _logger.Debug($"Setting stellar server too {_config["StellarService:HorizonHostname"]}");
+            _logger.LogInformation($"Stellar service is using endpoint {_config["StellarService:HorizonHostname"]}");
             _server = new Server(_config["StellarService:HorizonHostname"]);
             Network.UsePublicNetwork();
         }
-
-        public int totalRequest = 0;
-        public Stopwatch startTime = new Stopwatch();
+        private DateTime? _sendQueueInfoMessageTime;
+        private long _totalRequest = 0;
+        private Stopwatch _startTime = new Stopwatch();
         public async Task StartAsync()
         {
-            startTime.Start();
+            _startTime.Start();
             long pagingTokenLong = await GetCurrentCursorFromDatabase("FlattenedOperation");
             string pagingToken = pagingTokenLong.ToString();
 
-            _logger.Debug($"{nameof(pagingToken)}: {pagingToken}");
+            _logger.LogDebug($"Starting page token is {pagingToken}");
 
             await DeleteLastCursorId(pagingTokenLong);
 
@@ -56,13 +60,11 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
             _operationsRequestBuilder = _server.Operations.Cursor(pagingToken).Limit(200);
             _eventSource = _operationsRequestBuilder.Stream(async (sender, response) =>
             {
-                var total = Interlocked.Increment(ref totalRequest);
+                var total = Interlocked.Increment(ref _totalRequest);
                 Task[] arrayCopy = null;
 
                 lock (task)
                 {
-                    var rpm = startTime.Elapsed.Minutes > 0 ? $" | request handled per minute( {startTime.Elapsed.Minutes}m )  {totalRequest / startTime.Elapsed.Minutes} ": "";
-                    Console.WriteLine($"{task.Count} operations queued | '{response.PagingToken}'{rpm}");
                     if (task.Count == 200)
                     {
                         arrayCopy = task.ToArray();
@@ -76,9 +78,23 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
 
                 if(arrayCopy != null)
                     await Task.WhenAll(arrayCopy).ConfigureAwait(false);
+
+                if (_sendQueueInfoMessageTime == null || DateTime.Now >= _sendQueueInfoMessageTime)
+                {
+                    _sendQueueInfoMessageTime = DateTime.Now.AddMinutes(1);
+
+                   
+
+                    _logger.LogInformation($"Total operations parsed {_totalRequest}");
+                    _logger.LogInformation($"Currently queued operations {task.Count}");
+                    _logger.LogInformation($"Current paging token '{response.PagingToken}");
+                    var rpm = _startTime.Elapsed.Minutes > 0 ? $"{_totalRequest / _startTime.Elapsed.Minutes} request handled per minute ({_startTime.Elapsed.Minutes}m)" : "";
+                    if(!string.IsNullOrEmpty(rpm))
+                        _logger.LogInformation($"{rpm}");
+                }
             });
 
-            _eventSource.Error += (sender, args) => { _logger.Debug(args.Exception.Message, args.Exception); };
+            _eventSource.Error += (sender, args) => { _logger.LogError(args.Exception.Message); };
             _eventSource.Connect().Wait();
 
         }
@@ -118,7 +134,7 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
             }
             catch (Exception e)
             {
-                _logger.Error(e.Message, e);
+                _logger.LogDebug(e.Message);
             }
         }
         private async Task DeleteLastCursorId(long pagingToken, params string[] operationTypes)
