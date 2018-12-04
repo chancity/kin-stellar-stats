@@ -1,21 +1,16 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
-using Chaos.NaCl;
-using kin_stellar_stats.Database;
-using kin_stellar_stats.Database.Models;
-using kin_stellar_stats.Database.StellarObjectWrappers;
-using kin_stellar_stats.Services.Model;
+using Kin.Horizon.Api.Poller.Database;
+using Kin.Horizon.Api.Poller.Database.StellarObjectWrappers;
+using Kin.Horizon.Api.Poller.Services.Model;
 using log4net;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
-namespace kin_stellar_stats.Services.Impl
+namespace Kin.Horizon.Api.Poller.Services.Impl
 {
     public class DatabaseQueueService
     {
@@ -27,7 +22,7 @@ namespace kin_stellar_stats.Services.Impl
         private readonly AutoResetEvent _queueNotifier1 = new AutoResetEvent(false);
         private readonly System.Timers.Timer _timer = new System.Timers.Timer(50);
         private int _queueCounter;
-        private int _maxQueue = 1;
+        private int _maxQueue = 25;
 
         public DatabaseQueueService(IConfigurationRoot config, ManagementContext managementContext)
         {
@@ -65,7 +60,7 @@ namespace kin_stellar_stats.Services.Impl
             Task.Factory.StartNew(CommandQueueLoop, TaskCreationOptions.LongRunning);
         }
 
-        private async void CommandQueueLoop()
+        private void CommandQueueLoop()
         {
             while (true)
             {
@@ -74,7 +69,7 @@ namespace kin_stellar_stats.Services.Impl
                 {
                     if (_queueCounter >= _maxQueue) _queueNotifier1.WaitOne();
                     if (!_databaseCommandQueue.TryDequeue(out DatabaseQueueModel command)) continue;
-                    await HandleDatabaseQueueModel(command);
+                    HandleDatabaseQueueModel(command);
 
                 }
             }
@@ -169,10 +164,17 @@ namespace kin_stellar_stats.Services.Impl
 
                 await context.SaveChangesAsync();
 
-                await context.Database.ExecuteSqlCommandAsync(
-                    $"INSERT INTO Paginations SET CursorType = 'flattenedoperation'," +
-                    $" PagingToken = {databaseCommand.Operation.Id}" +
-                    $" ON DUPLICATE KEY UPDATE PagingToken = IF({databaseCommand.Operation.Id} > PagingToken, '{databaseCommand.Operation.Id}', PagingToken)");
+                var currentId = Interlocked.Read(ref _currentId);
+
+                if (databaseCommand.Operation.Id > currentId)
+                {
+                    await context.Database.ExecuteSqlCommandAsync(
+                        $"INSERT INTO Paginations SET CursorType = 'flattenedoperation'," +
+                        $" PagingToken = {databaseCommand.Operation.Id}" +
+                        $" ON DUPLICATE KEY UPDATE PagingToken = IF({databaseCommand.Operation.Id} > PagingToken, '{databaseCommand.Operation.Id}', PagingToken)");
+
+                    Interlocked.Exchange(ref _currentId, databaseCommand.Operation.Id);
+                }
 
             }
             catch (Exception e)
@@ -187,5 +189,7 @@ namespace kin_stellar_stats.Services.Impl
             }
            
         }
+
+        private long _currentId = int.MinValue;
     }
 }

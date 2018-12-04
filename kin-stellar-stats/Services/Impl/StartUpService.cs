@@ -1,11 +1,11 @@
 ﻿using System;
-using System.Threading.Tasks;
-using kin_stellar_stats.Database;
+using kin_stellar_stats.Services;
+using Kin.Horizon.Api.Poller.Database;
 using log4net;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
-namespace kin_stellar_stats.Services.Impl
+namespace Kin.Horizon.Api.Poller.Services.Impl
 {
     public class StartupService
     {

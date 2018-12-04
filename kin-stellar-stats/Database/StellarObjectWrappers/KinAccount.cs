@@ -1,8 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using stellar_dotnet_sdk.responses;
+using Kin.Stellar.Sdk.responses;
 
-namespace kin_stellar_stats.Database.StellarObjectWrappers
+namespace Kin.Horizon.Api.Poller.Database.StellarObjectWrappers
 {
     public class KinAccount
     {

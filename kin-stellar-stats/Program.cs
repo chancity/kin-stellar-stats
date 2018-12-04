@@ -1,10 +1,9 @@
 ﻿using System;
-using kin_stellar_stats.Services.Impl;
 using kin_stellar_stats;
+using Kin.Stellar.Sdk;
 using log4net;
-using stellar_dotnet_sdk;
 
-namespace kin_stellar_stats
+namespace Kin.Horizon.Api.Poller
 {
     internal class Program
     {

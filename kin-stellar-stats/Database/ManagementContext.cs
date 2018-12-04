@@ -1,14 +1,9 @@
 ﻿using kin_stellar_stats.Database.Models;
-using kin_stellar_stats.Database.StellarObjectWrappers;
+using Kin.Horizon.Api.Poller.Database.StellarObjectWrappers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using stellar_dotnet_sdk;
-using stellar_dotnet_sdk.responses;
-using stellar_dotnet_sdk.responses.effects;
-using stellar_dotnet_sdk.responses.operations;
-using stellar_dotnet_sdk.xdr;
 
-namespace kin_stellar_stats.Database
+namespace Kin.Horizon.Api.Poller.Database
 {
     public class ManagementContext : DbContext
     {

@@ -1,13 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text;
-using stellar_dotnet_sdk;
-using stellar_dotnet_sdk.responses;
-using stellar_dotnet_sdk.responses.effects;
-using stellar_dotnet_sdk.responses.operations;
+using Kin.Stellar.Sdk.responses;
+using Kin.Stellar.Sdk.responses.effects;
+using Kin.Stellar.Sdk.responses.operations;
 
-namespace kin_stellar_stats.Database.StellarObjectWrappers
+namespace Kin.Horizon.Api.Poller.Database.StellarObjectWrappers
 {
 
     public class FlattenOperationFactory

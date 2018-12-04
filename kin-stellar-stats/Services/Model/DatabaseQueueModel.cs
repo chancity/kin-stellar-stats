@@ -1,9 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using kin_stellar_stats.Database.StellarObjectWrappers;
+﻿using System.Collections.Generic;
+using Kin.Horizon.Api.Poller.Database.StellarObjectWrappers;
 
-namespace kin_stellar_stats.Services.Model
+namespace Kin.Horizon.Api.Poller.Services.Model
 {
     public class DatabaseQueueModel
     {

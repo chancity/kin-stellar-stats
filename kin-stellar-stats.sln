@@ -3,9 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27428.2037
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "kin_stellar_stats", "kin-stellar-stats\kin_stellar_stats.csproj", "{6FD6FEDD-766E-4E45-A847-F4863AC9E92B}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "stellar-dotnet-sdk", "stellar-dotnet-sdk\stellar-dotnet-sdk.csproj", "{4F13118E-3FB8-4509-83D8-06B74CAB4755}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Kin.Horizon.Api.Poller", "kin-stellar-stats\Kin.Horizon.Api.Poller.csproj", "{6FD6FEDD-766E-4E45-A847-F4863AC9E92B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,10 +15,6 @@ Global
 		{6FD6FEDD-766E-4E45-A847-F4863AC9E92B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6FD6FEDD-766E-4E45-A847-F4863AC9E92B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6FD6FEDD-766E-4E45-A847-F4863AC9E92B}.Release|Any CPU.Build.0 = Release|Any CPU
-		{4F13118E-3FB8-4509-83D8-06B74CAB4755}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{4F13118E-3FB8-4509-83D8-06B74CAB4755}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{4F13118E-3FB8-4509-83D8-06B74CAB4755}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{4F13118E-3FB8-4509-83D8-06B74CAB4755}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

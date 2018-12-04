@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using kin_stellar_stats.Database;
+using Kin.Horizon.Api.Poller.Database;
 
 namespace kin_stellar_stats.Migrations
 {
