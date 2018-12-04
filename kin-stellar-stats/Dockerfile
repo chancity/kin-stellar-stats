@@ -1,7 +1,7 @@
-FROM microsoft/dotnet:2.0-runtime AS base
+FROM microsoft/dotnet:2.1-aspnetcore-runtime AS base
 WORKDIR /app
 
-FROM microsoft/dotnet:2.0-sdk AS build
+FROM microsoft/dotnet:2.1-sdk AS build
 WORKDIR /src
 COPY kin-stellar-stats/Kin.Horizon.Api.Poller.csproj kin-stellar-stats/
 RUN dotnet restore kin-stellar-stats/Kin.Horizon.Api.Poller.csproj
