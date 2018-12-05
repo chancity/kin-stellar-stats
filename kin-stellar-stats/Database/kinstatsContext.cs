@@ -37,8 +37,7 @@ namespace Kin.Horizon.Api.Poller.Database
                 entity.ToTable("active_wallet");
 
                 entity.HasIndex(e => e.Address)
-                    .HasName("address")
-                    .IsUnique();
+                    .HasName("address");
 
                 entity.Property(e => e.Year).HasColumnName("year");
 

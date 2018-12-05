@@ -18,7 +18,6 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
     {
         private readonly KinstatsContext _kinstatsContext;
         private readonly IDiscordLogger _logger;
-        private readonly Dictionary<string, int> AppMap;
         private DateTime? _currentDate;
         public ConcurrentDictionary<DateTime, DailyStats> DailyStats { get; }
 
@@ -27,7 +26,8 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
             _kinstatsContext = managementContext;
             DailyStats = new ConcurrentDictionary<DateTime, DailyStats>();
             _logger = DicordLogFactory.GetLogger<StatsManager>(GlobalVariables.DiscordId, GlobalVariables.DiscordToken);
-            AppMap = new Dictionary<string, int>();
+
+            WebHookClient.RateLimitMs = 1000;
         }
 
         public async Task<bool> PopulateSavedActiveWallets(OperationResponse operation)
@@ -131,37 +131,39 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
                         cursorPage.CursorId = (ulong) ds.CurrentPagingToken;
                     }
 
-                    await _kinstatsContext.SaveChangesAsync();
 
                     foreach (DailyStats dailyStatsValue in DailyStats.Values)
                     {
                         if (dailyStatsValue.ActiveWalletsNotSaved.Count > 0)
                         {
                             var wallets = dailyStatsValue.ActiveWalletsNotSavedCopy();
-                            var walletsInDb = _kinstatsContext.ActiveWallet
-                                .Where(u => wallets.Contains(u.Address) && u.Year == (ushort)dailyStatsValue.Date.Year  && u.Day == (ushort)dailyStatsValue.Date.Day)
-                                                           .Select(u => u.Address).ToArray();
+                            var walletsInDb = _kinstatsContext.ActiveWallet.Where(u => wallets.Contains(u.Address) && u.Year == (ushort)dailyStatsValue.Date.Year  && u.Day == (ushort)dailyStatsValue.Date.DayOfYear).Select(u => u.Address).ToArray();
                             var walletsNotInDb = wallets.Where(u => !walletsInDb.Contains(u));
 
-                            foreach(string user in walletsNotInDb)
+                            _logger.LogInformation($"Saving wallets for year {dailyStatsValue.Date.Year } and day {dailyStatsValue.Date.DayOfYear}");
+
+                            foreach (string user in walletsNotInDb)
                             {
-                                await _kinstatsContext.AddAsync(new ActiveWallet(){Day = (ushort)dailyStatsValue.Date.Day, Year = (ushort)dailyStatsValue.Date.Year, Address = user });
+                                await _kinstatsContext.AddAsync(new ActiveWallet{Day = (ushort)dailyStatsValue.Date.DayOfYear, Year = (ushort)dailyStatsValue.Date.Year, Address = user });
                             }
-
-                            await _kinstatsContext.SaveChangesAsync();
-
-                            dailyStatsValue.AddSavedActiveWallets(wallets.ToList());
                         }
                     }
 
-                  
+                    await _kinstatsContext.SaveChangesAsync();
 
                     ClearData();
                 }
             }
             catch (Exception e)
             {
-                _logger.LogError(e, e.Message);
+                if (e.InnerException != null)
+                {
+                    _logger.LogError(e.InnerException, e.InnerException.Message);
+                }
+                else
+                {
+                    _logger.LogError(e, e.Message);
+                }
             }
             finally
             {
@@ -202,7 +204,7 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
 
                 if (activeWallets.TotalCount > 0)
                 {
-                    _logger.LogInformation($"There are {activeWallets.TotalCount} saved wallets");
+                    _logger.LogInformation($"There are {activeWallets.TotalCount} saved wallets for year {dailyStats.Date.Year } and day {dailyStats.Date.DayOfYear}");
                     dailyStats.AddSavedActiveWallets(activeWallets);
 
                     while (activeWallets.HasNextPage)
@@ -307,7 +309,7 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
         internal void Clear()
         {
             AppStats.Clear();
-
+            AddSavedActiveWallets(ActiveWalletsNotSaved.ToList());
             lock (_activeUsersLockObject)
             {
                 ActiveWalletsNotSaved.Clear();
