@@ -87,7 +87,7 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
                     _logger.LogInformation($"Total operations parsed {_totalRequest}");
                     _logger.LogInformation($"Currently queued operations {_operationsToHandleQueue.Count}");
                     _logger.LogInformation($"Current paging token '{response.PagingToken}");
-                    var rpm = _startTime.Elapsed.Minutes > 0 ? $"{_totalRequest / _startTime.Elapsed.Minutes} request handled per minute ({_startTime.Elapsed.Minutes}m)" : "";
+                    var rpm = _startTime.Elapsed.Minutes > 0 ? $"{_totalRequest / _startTime.Elapsed.TotalMinutes} request handled per minute ({_startTime.Elapsed.TotalMinutes}m)" : "";
 
                     if (!string.IsNullOrEmpty(rpm))
                         _logger.LogInformation($"{rpm}");
