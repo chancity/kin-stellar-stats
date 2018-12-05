@@ -190,15 +190,18 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
                 IQueryable<string> query = _kinstatsContext.ActiveWallet.AsNoTracking()
                     .Where(x => x.Year == dailyStats.Date.Year && x.Day == dailyStats.Date.DayOfYear).Select(x => x.Address);
 
-                PaginatedList<string> activeWallets = await PaginatedList<string>.CreateAsync(query, 1, 200);
+                PaginatedList<string> activeWallets = await PaginatedList<string>.CreateAsync(query, 1, 1000);
 
                 if (activeWallets.TotalCount > 0)
                 {
+                    _logger.LogInformation($"There are {activeWallets.TotalCount} saved wallets");
                     dailyStats.AddSavedActiveWallets(activeWallets);
 
                     while (activeWallets.HasNextPage)
                     {
-                        activeWallets = await PaginatedList<string>.CreateAsync(query, activeWallets.PageIndex + 1, 200, activeWallets.Count);
+
+                        query = _kinstatsContext.ActiveWallet.AsNoTracking().Where(x => x.Year == dailyStats.Date.Year && x.Day == dailyStats.Date.DayOfYear).Select(x => x.Address);
+                        activeWallets = await PaginatedList<string>.CreateAsync(query, activeWallets.PageIndex + 1, 1000);
                         dailyStats.AddSavedActiveWallets(activeWallets);
                     }
                 }
