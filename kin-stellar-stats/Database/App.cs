@@ -8,6 +8,7 @@ namespace Kin.Horizon.Api.Poller.Database
         {
             AppStats = new HashSet<AppStats>();
             OverallStats = new OverallStats();
+            AppInfo = new AppInfo();
         }
 
         public int Id { get; set; }
