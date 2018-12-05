@@ -118,19 +118,6 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
                         }
                     }
 
-                    var cursorPage = await _kinstatsContext.Pagination.SingleOrDefaultAsync(x => x.CursorType == "operation");
-                    var ds = DailyStats.Values.Last();
-
-                    if (cursorPage == null)
-                    {
-                        _kinstatsContext.Pagination.Add(new Pagination()
-                            {CursorId = (ulong) ds.CurrentPagingToken, CursorType = "operation"});
-                    }
-                    else
-                    {
-                        cursorPage.CursorId = (ulong) ds.CurrentPagingToken;
-                    }
-
 
                     foreach (DailyStats dailyStatsValue in DailyStats.Values)
                     {
@@ -147,6 +134,19 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
                                 await _kinstatsContext.AddAsync(new ActiveWallet{Day = (ushort)dailyStatsValue.Date.DayOfYear, Year = (ushort)dailyStatsValue.Date.Year, Address = user });
                             }
                         }
+                    }
+
+
+                    var cursorPage = await _kinstatsContext.Pagination.SingleOrDefaultAsync(x => x.CursorType == "operation");
+                    var ds = DailyStats.Values.Last();
+
+                    if (cursorPage == null)
+                    {
+                        _kinstatsContext.Pagination.Add(new Pagination { CursorId = (ulong)ds.CurrentPagingToken, CursorType = "operation" });
+                    }
+                    else
+                    {
+                        cursorPage.CursorId = (ulong)ds.CurrentPagingToken;
                     }
 
                     await _kinstatsContext.SaveChangesAsync();
@@ -262,10 +262,9 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
         internal void HandleOperation(FlattenedOperation operation)
         {
 
-            if (operation.Id > CurrentPagingToken)
-            {
-                CurrentPagingToken = operation.Id;
-            }
+
+            CurrentPagingToken = operation.Id;
+            
 
             string appId = "unknown";
 
