@@ -138,11 +138,16 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
                         if (dailyStatsValue.ActiveWalletsNotSaved.Count > 0)
                         {
                             var wallets = dailyStatsValue.ActiveWalletsNotSavedCopy();
+var newUserIDs = wallets.Select(u => u.UserId).Distinct().ToArray();
+var usersInDb = _kinstatsContext.ActiveWallet
+    .Where(u => newUserIDs.Contains(u.Address) && u.Year == (ushort)dailyStatsValue.Date.Year  && u.Day == (ushort)dailyStatsValue.Date.Day)
+                               .Select(u => u.Address).ToArray();
+var usersNotInDb = wallets.Where(u => !usersInDb.Contains(u));
+foreach(string user in usersNotInDb){
+    await _kinstatsContext.AddAsync(new ActiveWallet(){Day = (ushort)dailyStatsValue.Date.Day, Year = (ushort)dailyStatsValue.Date.Year, Address = user });
+}
+                            
 
-                            foreach (var wallet in wallets)
-                            {
-                                await _kinstatsContext.Database.ExecuteSqlCommandAsync($"INSERT IGNORE INTO active_wallet (year, day, address) VALUES ({dailyStatsValue.Date.Year}, {dailyStatsValue.Date.DayOfYear}, '{wallet}')");
-                            }
 
                             dailyStatsValue.AddSavedActiveWallets(wallets.ToList());
                         }
