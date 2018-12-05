@@ -38,8 +38,8 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
             {
                 DailyStats dailyStats = DailyStats.GetOrAdd(createdAt, new DailyStats(createdAt));
                 await PopulateSavedActiveWallets(dailyStats);
+                _logger.LogInformation($"Populated saved wallets with {dailyStats.ActiveWalletsSaved.Count} entries");
             }
-
 
             return true;
         }
