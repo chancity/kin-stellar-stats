@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using System.Timers;
 using discord_web_hook_logger;
 using Kin.Horizon.Api.Poller.Database;
-using Kin.Horizon.Api.Poller.Database.StellarObjectWrappers;
+using Kin.Horizon.Api.Poller.Services.Model;
 using Kin.Stellar.Sdk;
 using Kin.Stellar.Sdk.requests;
 using Kin.Stellar.Sdk.responses.operations;
@@ -23,7 +23,7 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
     public class StellarService : IStellarService
     {
         private readonly IConfigurationRoot _config;
-        private readonly ManagementContext _managementContext;
+        private readonly KinstatsContext _kinstatsContext;
         //private readonly DatabaseQueueService _databaseQueueService;
         private readonly IDiscordLogger _logger;
         private readonly Server _server;
@@ -36,24 +36,17 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
         private readonly Stopwatch _startTime;
         private int _queueCounter;
         private int _maxQueue = 1000;
-        private readonly AutoResetEvent _queueNotifier;
         private readonly AutoResetEvent _queueNotifier1;
-        private readonly AutoResetEvent _dataSaveBlocker;
         private readonly System.Timers.Timer _timer;
 
-        public StellarService(IConfigurationRoot config, ManagementContext managementContext)
+        public StellarService(IConfigurationRoot config, KinstatsContext kinstatsContext)
         {
-            // DatabaseQueueService databaseQueueService
             _config = config;
-            _queueNotifier = new AutoResetEvent(false);
             _queueNotifier1 = new AutoResetEvent(false);
-            _dataSaveBlocker = new AutoResetEvent(false);
-           
-            _managementContext = managementContext;
-            //_databaseQueueService = databaseQueueService;
-            _statsManager = new StatsManager(_dataSaveBlocker);
-            _logger = DicordLogFactory.GetLogger<StellarService>(GlobalVariables.DiscordId,
-                GlobalVariables.DiscordToken);
+
+            _kinstatsContext = kinstatsContext;
+            _statsManager = new StatsManager(kinstatsContext);
+            _logger = DicordLogFactory.GetLogger<StellarService>(GlobalVariables.DiscordId,GlobalVariables.DiscordToken);
             _operationsToHandleQueue = new ConcurrentQueue<OperationResponse>();
             ServicePointManager.DefaultConnectionLimit = 300;
             _logger.LogInformation($"Stellar service is using endpoint {_config["StellarService:HorizonHostname"]}");
@@ -76,20 +69,17 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
         public async Task StartAsync()
         {
             _startTime.Start();
-            long pagingTokenLong = await GetCurrentCursorFromDatabase("FlattenedOperation");
+            ulong pagingTokenLong = await GetCurrentCursorFromDatabase("operation");
             string pagingToken = pagingTokenLong.ToString();
 
             _logger.LogDebug($"Starting page token is {pagingToken}");
-
-            await DeleteLastCursorId(pagingTokenLong);
 
            // List<Task> task = new List<Task>();
             _operationsRequestBuilder = _server.Operations.Cursor(pagingToken).Limit(200);
             _eventSource = _operationsRequestBuilder.Stream((sender, response) =>
             {
                 _operationsToHandleQueue.Enqueue(response);
-                //_queueNotifier.Set();
-
+               
                 if (_sendQueueInfoMessageTime == null || DateTime.Now >= _sendQueueInfoMessageTime)
                 {
                     _sendQueueInfoMessageTime = DateTime.Now.AddMinutes(1);
@@ -101,8 +91,6 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
 
                     if (!string.IsNullOrEmpty(rpm))
                         _logger.LogInformation($"{rpm}");
-
-                    _statsManager.OutPutToDiscord();
                 }
             });
 
@@ -117,22 +105,33 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
 
         }
 
-        private void HandleResponseQueue()
+        private async void HandleResponseQueue()
         {
             while (true)
             {
-                Thread.Sleep(1);
-               // _queueNotifier.WaitOne();
+                await Task.Delay(1);
                 while (!_operationsToHandleQueue.IsEmpty)
                 {
 
                     if (_queueCounter >= _maxQueue) _queueNotifier1.WaitOne();
+
+                    if (_totalRequest != 0 && _totalRequest % 2000 == 0)
+                    {
+                        await _statsManager.SaveData();
+                    }
+
                     if (!_operationsToHandleQueue.TryDequeue(out var operation)) continue;
 
-                    if (_totalRequest > 0 && _totalRequest % 3000 == 0)
-                        _dataSaveBlocker.WaitOne();
+                    var success = await _statsManager.PopulateSavedActiveWallets(operation);
 
-                    HandleResponse(operation);
+                    if (success)
+                    {
+                        HandleResponse(operation);
+                    }
+                    else
+                    {
+                        _operationsToHandleQueue.Enqueue(operation);
+                    }
                 }
             }
         }
@@ -144,7 +143,6 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
             {
                 var transactions = await _server.Transactions.Transaction(operation.TransactionHash).ConfigureAwait(false);
                 var flattenOperation = FlattenOperationFactory.GibeFlattenedOperation(operation, transactions);
-
                 _statsManager.HandleOperation(flattenOperation);
             }
             catch (Exception e)
@@ -156,28 +154,11 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
                 Interlocked.Decrement(ref _queueCounter);
             }
         }
-        private async Task DeleteLastCursorId(long pagingToken, params string[] operationTypes)
+
+        private async Task<ulong> GetCurrentCursorFromDatabase(string cursorType)
         {
-            if (operationTypes.Length == 0)
-            {
-                operationTypes = new[] { "FlattenedOperation" };
-            }
-
-            List<Task<int>> tasks = operationTypes
-                .Select(async operationType => 
-                    await _managementContext
-                        .Database
-                        .ExecuteSqlCommandAsync(string.Format("DELETE FROM {0} WHERE Id = {1};", 
-                        operationType, 
-                        pagingToken))).ToList();
-
-            await Task.WhenAll(tasks);
-        }
-
-        private async Task<long> GetCurrentCursorFromDatabase(string cursorType)
-        {
-            var pagination = await _managementContext.Paginations.AsNoTracking().SingleOrDefaultAsync(x => x.CursorType == cursorType);
-            return pagination?.PagingToken ?? 0;
+            var pagination = await _kinstatsContext.Pagination.AsNoTracking().SingleOrDefaultAsync(x => x.CursorType == cursorType);
+            return pagination?.CursorId ?? 0;
         }
     }
 }

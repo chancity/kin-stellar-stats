@@ -21,6 +21,15 @@ namespace Kin.Horizon.Api.Poller
     {
         public static long DiscordId;
         public static string DiscordToken;
+
+        public static Dictionary<string, string> DefaultConfiguration = new Dictionary<string, string>
+        {
+            {"StellarService:HorizonHostname", "https://horizon-kin-ecosystem.kininfrastructure.com/"},
+            {"DatabaseService:ConnectionString", "server=localhost;database=kin_test;uid=root;pwd=password"},
+            {"DatabaseService:RequestPerMinute", "3000"},
+            {"DiscordLogger:Id", "519614392057200670"},
+            {"DiscordLogger:Token", "qggUhn6skbpcLlrU0bq2WYQfuOCORsqVE9BAhmxZsJczPgzcoTpnvG8c8jeYLvbmYljr"}
+        };
     }
     public class Startup
     {
@@ -70,12 +79,11 @@ namespace Kin.Horizon.Api.Poller
         {
             services
                 .AddSingleton(_configuration)
-                .AddDbContext<ManagementContext>(options =>
+                .AddDbContext<KinstatsContext>(options =>
                 {
                     options.UseMySql(_configuration["DatabaseService:ConnectionString"]);
                     options.EnableSensitiveDataLogging();
                 })
-                //.AddSingleton<DatabaseQueueService>()
                 .AddSingleton<IStellarService, StellarService>()
                 .AddSingleton<StartupService>();
         }

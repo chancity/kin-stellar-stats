@@ -1,10 +1,8 @@
 ﻿using System;
-using System.ComponentModel.DataAnnotations.Schema;
 using Kin.Stellar.Sdk.responses;
-using Kin.Stellar.Sdk.responses.effects;
 using Kin.Stellar.Sdk.responses.operations;
 
-namespace Kin.Horizon.Api.Poller.Database.StellarObjectWrappers
+namespace Kin.Horizon.Api.Poller.Services.Model
 {
 
     public class FlattenOperationFactory
@@ -29,7 +27,6 @@ namespace Kin.Horizon.Api.Poller.Database.StellarObjectWrappers
     {
         public long Id { get; set; }
         public DateTimeOffset CreatedAt { get; set; }
-        [NotMapped]
         public string PagingToken { get; set; }
         public string SourceAccount { get; set; }
         public string Type { get; set; }

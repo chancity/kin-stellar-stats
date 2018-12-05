@@ -1,36 +1,25 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Text;
-using Kin.Horizon.Api.Poller.Database;
+﻿using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
 
-namespace kin_stellar_stats.Database
+namespace Kin.Horizon.Api.Poller.Database
 {
-    public class DesignTimeManagementContextFactory : IDesignTimeDbContextFactory<ManagementContext>
+    public class DesignTimeKinstatsContextFactory : IDesignTimeDbContextFactory<KinstatsContext>
     {
-        public ManagementContext CreateDbContext(string[] args)
+        public KinstatsContext CreateDbContext(string[] args)
         {
-            Dictionary<string, string> defaultConfiguration = new Dictionary<string, string>
-            {
-                {"StellarService:HorizonHostname", "https://horizon-kin-ecosystem.kininfrastructure.com/"},
-                {"DatabaseService:ConnectionString", "server=localhost;database=kin_test;uid=root;pwd=password"},
-                {"DatabaseService:RequestPerMinute", "3000"}
-            };
-
             ConfigurationBuilder configBuilder = new ConfigurationBuilder();
-            configBuilder.AddInMemoryCollection(defaultConfiguration).AddCommandLine(args);
+            configBuilder.AddInMemoryCollection(GlobalVariables.DefaultConfiguration).AddCommandLine(args).AddEnvironmentVariables();
             var configuration = configBuilder.Build();
 
-            var builder = new DbContextOptionsBuilder<ManagementContext>();
+            var builder = new DbContextOptionsBuilder<KinstatsContext>();
 
             var connectionString = configuration["DatabaseService:ConnectionString"];
 
             builder.UseMySql(connectionString);
 
-            return new ManagementContext(builder.Options);
+            return new KinstatsContext(builder.Options);
         }
     }
 }
