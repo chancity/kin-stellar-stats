@@ -147,14 +147,14 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
                             {
                                 await _kinstatsContext.AddAsync(new ActiveWallet(){Day = (ushort)dailyStatsValue.Date.Day, Year = (ushort)dailyStatsValue.Date.Year, Address = user });
                             }
-                            
 
+                            await _kinstatsContext.SaveChangesAsync();
 
                             dailyStatsValue.AddSavedActiveWallets(wallets.ToList());
                         }
-
-                       
                     }
+
+                  
 
                     ClearData();
                 }
