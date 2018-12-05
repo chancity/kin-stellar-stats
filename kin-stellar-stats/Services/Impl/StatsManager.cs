@@ -116,16 +116,6 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
                                 dbOverallStats.PaymentVolume += appStats.PaymentVolume;
                             }
                         }
-
-                        if (dailyStatsValue.ActiveWalletsNotSaved.Count > 0)
-                        {
-
-                            foreach (var wallet in dailyStatsValue.ActiveWalletsNotSaved)
-                            {
-                                await _kinstatsContext.Database.ExecuteSqlCommandAsync($"INSERT IGNORE INTO active_wallet (year, day, address) VALUES ({dailyStatsValue.Date.Year}, {dailyStatsValue.Date.DayOfYear}, '{wallet}')");
-                            }
-
-                        }
                     }
 
                     var cursorPage = await _kinstatsContext.Pagination.SingleOrDefaultAsync(x => x.CursorType == "operation");
@@ -145,7 +135,19 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
 
                     foreach (DailyStats dailyStatsValue in DailyStats.Values)
                     {
-                        dailyStatsValue.AddSavedActiveWallets(dailyStatsValue.ActiveWalletsNotSaved.ToList());
+                        if (dailyStatsValue.ActiveWalletsNotSaved.Count > 0)
+                        {
+                            var wallets = dailyStatsValue.ActiveWalletsNotSavedCopy();
+
+                            foreach (var wallet in wallets)
+                            {
+                                await _kinstatsContext.Database.ExecuteSqlCommandAsync($"INSERT IGNORE INTO active_wallet (year, day, address) VALUES ({dailyStatsValue.Date.Year}, {dailyStatsValue.Date.DayOfYear}, '{wallet}')");
+                            }
+
+                            dailyStatsValue.AddSavedActiveWallets(wallets.ToList());
+                        }
+
+                       
                     }
 
                     ClearData();
@@ -199,7 +201,6 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
 
                     while (activeWallets.HasNextPage)
                     {
-
                         query = _kinstatsContext.ActiveWallet.AsNoTracking().Where(x => x.Year == dailyStats.Date.Year && x.Day == dailyStats.Date.DayOfYear).Select(x => x.Address);
                         activeWallets = await PaginatedList<string>.CreateAsync(query, activeWallets.PageIndex + 1, 1000);
                         dailyStats.AddSavedActiveWallets(activeWallets);
@@ -304,6 +305,19 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
             lock (_activeUsersLockObject)
             {
                 ActiveWalletsNotSaved.Clear();
+            }
+        }
+        internal HashSet<string> ActiveWalletsNotSavedCopy()
+        {
+            var list = new HashSet<string>();
+            lock (_activeUsersLockObject)
+            {
+                foreach (string s in ActiveWalletsNotSaved)
+                {
+                    list.Add(s);
+                }
+
+                return list;
             }
         }
 
