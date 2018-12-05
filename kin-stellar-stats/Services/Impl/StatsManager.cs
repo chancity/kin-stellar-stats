@@ -119,13 +119,12 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
 
                         if (dailyStatsValue.ActiveWalletsNotSaved.Count > 0)
                         {
-                            await _kinstatsContext.ActiveWallet.AddRangeAsync(
-                                dailyStatsValue.ActiveWalletsNotSaved.Select(x => new ActiveWallet
-                                {
-                                    Address = x,
-                                    Day = (ushort) dailyStatsValue.Date.DayOfYear,
-                                    Year = (ushort) dailyStatsValue.Date.Year
-                                }));
+
+                            foreach (var wallet in dailyStatsValue.ActiveWalletsNotSaved)
+                            {
+                                await _kinstatsContext.Database.ExecuteSqlCommandAsync($"INSERT IGNORE INTO active_wallet (year, day, address) VALUES ({dailyStatsValue.Date.Year}, {dailyStatsValue.Date.DayOfYear}, '{wallet}')");
+                            }
+
                         }
                     }
 
