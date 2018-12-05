@@ -9,20 +9,20 @@ namespace Kin.Horizon.Api.Poller.Database.StellarObjectWrappers
 
     public class FlattenOperationFactory
     {
-        public static FlattenedOperation GibeFlattenedOperation(OperationResponse operationResponse, TransactionResponse transactionResponse, EffectResponse effectResponse)
+        public static FlattenedOperation GibeFlattenedOperation(OperationResponse operationResponse, TransactionResponse transactionResponse)
         {
             if (operationResponse is PaymentOperationResponse paymentOperation)
             {
-                return new FlattenPaymentOperation(paymentOperation, transactionResponse, effectResponse);
+                return new FlattenPaymentOperation(paymentOperation, transactionResponse);
             }
 
             if (operationResponse is CreateAccountOperationResponse createAccountOperation)
             {
-                return new FlattenCreateAccountOperation(createAccountOperation, transactionResponse, effectResponse);
+                return new FlattenCreateAccountOperation(createAccountOperation, transactionResponse);
             }
 
 
-            return new FlattenedOperation(operationResponse, transactionResponse, effectResponse);
+            return new FlattenedOperation(operationResponse, transactionResponse);
         }
     }
     public class FlattenedOperation
@@ -38,7 +38,7 @@ namespace Kin.Horizon.Api.Poller.Database.StellarObjectWrappers
 
         public FlattenedOperation() { }
 
-        public FlattenedOperation(OperationResponse operationResponse, TransactionResponse transactionResponse, EffectResponse effectResponse)
+        public FlattenedOperation(OperationResponse operationResponse, TransactionResponse transactionResponse)
         {
             Id = operationResponse.Id;
             CreatedAt = DateTimeOffset.Parse(operationResponse.CreatedAt);
@@ -46,7 +46,6 @@ namespace Kin.Horizon.Api.Poller.Database.StellarObjectWrappers
             SourceAccount = operationResponse.SourceAccount.AccountId;
             Type = operationResponse.Type;
             Memo = transactionResponse.MemoStr;
-            EffectType = effectResponse.Type;
         }
     }
 
@@ -61,7 +60,7 @@ namespace Kin.Horizon.Api.Poller.Database.StellarObjectWrappers
 
         public FlattenPaymentOperation() { }
 
-        public FlattenPaymentOperation(PaymentOperationResponse operationResponse, TransactionResponse transactionResponse, EffectResponse effectResponse) : base(operationResponse, transactionResponse, effectResponse)
+        public FlattenPaymentOperation(PaymentOperationResponse operationResponse, TransactionResponse transactionResponse) : base(operationResponse, transactionResponse)
         {
             double.TryParse(operationResponse.Amount, out var amountN);
             Amount = amountN;
@@ -81,7 +80,7 @@ namespace Kin.Horizon.Api.Poller.Database.StellarObjectWrappers
 
         public FlattenCreateAccountOperation() { }
 
-        public FlattenCreateAccountOperation(CreateAccountOperationResponse operationResponse, TransactionResponse transactionResponse, EffectResponse effectResponse) : base(operationResponse, transactionResponse, effectResponse)
+        public FlattenCreateAccountOperation(CreateAccountOperationResponse operationResponse, TransactionResponse transactionResponse) : base(operationResponse, transactionResponse)
         {
             Account = operationResponse.Account.AccountId;
             Funder = operationResponse.Funder.AccountId;

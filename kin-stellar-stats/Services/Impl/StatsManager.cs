@@ -1,13 +1,12 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Text;
 using System.Threading;
 using discord_web_hook_logger;
 using Kin.Horizon.Api.Poller.Database.StellarObjectWrappers;
 using Microsoft.Extensions.Logging;
 
-namespace Kin.Horizon.Api.Poller.Services.Model
+namespace Kin.Horizon.Api.Poller.Services.Impl
 {
     internal class StatsManager
     {
@@ -37,7 +36,6 @@ namespace Kin.Horizon.Api.Poller.Services.Model
             if (_currentDate != null && DailyStats.TryGetValue(_currentDate.Value, out var today))
             {
                 _logger.LogInformation(today.ToString());
-
                 foreach (KeyValuePair<string, AppStats> todayAppStat in today.AppStats)
                 {
                     _logger.LogInformation(todayAppStat.Value.ToString());
@@ -92,13 +90,13 @@ namespace Kin.Horizon.Api.Poller.Services.Model
             var appStats = AppStats.GetOrAdd(appId, new AppStats(appId));
 
             HandleOperationStats(operation, activeAccounts);
-
             appStats.HandleOperationStats(operation, activeAccounts);
         }
 
         public override string ToString()
         {
-            return $"Aggregated Stats\n\n" +
+            return $"\nAggregated Stats\n" +
+                   $"Date: {Date}\n" +
                    $"{base.ToString()}";
         }
     }
@@ -114,7 +112,7 @@ namespace Kin.Horizon.Api.Poller.Services.Model
 
         public override string ToString()
         {
-            return $"AppId: {AppId}\n\n" +
+            return $"\nAppId: {AppId}\n" +
                    $"{base.ToString()}";
         }
     }
