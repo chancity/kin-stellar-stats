@@ -14,7 +14,7 @@ namespace Kin.Horizon.Api.Poller.Extensions
 
         public static long ToEpochNearestHour(this DateTimeOffset date)
         {
-            long roundTicks = TimeSpan.TicksPerHour;
+            long roundTicks = TimeSpan.TicksPerDay;
             return new DateTimeOffset(new DateTime(date.Ticks - date.Ticks % roundTicks)).ToUnixTimeSeconds();
         }
 

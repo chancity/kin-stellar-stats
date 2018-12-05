@@ -38,7 +38,7 @@ namespace Kin.Horizon.Api.Poller.Database
         public DbSet<FlattenedOperation> FlattenedOperation { get; set; }
         public DbSet<FlattenPaymentOperation> FlattenPaymentOperation { get; set; }
         public DbSet<FlattenCreateAccountOperation> FlattenCreateAccountOperation { get; set; }
-        public DbSet<KinAccount> KinAccounts { get; set; }
+       // public DbSet<KinAccount> KinAccounts { get; set; }
         public DbSet<Pagination> Paginations { get; set; }
     }
 }

@@ -12,29 +12,55 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
     internal class StatsManager
     {
         public DateTime CurrentDate => _currentDate.FromUnixTime();
-
         public ConcurrentDictionary<long, DailyStats> DailyStats { get; }
         private readonly IDiscordLogger _logger;
-        private long _currentDate = long.MinValue;
+        private long _currentDate = 0;
+        private long _currentPagingToken = long.MinValue;
+        private readonly AutoResetEvent _queueBlocker;
 
-        public StatsManager()
+        public StatsManager(AutoResetEvent queueBlocker)
         {
+            _queueBlocker = queueBlocker;
             DailyStats = new ConcurrentDictionary<long, DailyStats>();
             _logger = DicordLogFactory.GetLogger<StatsManager>(GlobalVariables.DiscordId, GlobalVariables.DiscordToken);
         }
 
         public void HandleOperation(FlattenedOperation operation)
         {
-           
             var epochTime = operation.CreatedAt.ToEpochNearestHour();
 
             if (epochTime > _currentDate)
+            {
                 _currentDate = epochTime;
+            }
+
+
+            if (operation.Id > _currentPagingToken)
+            {
+                _currentPagingToken = operation.Id;
+            }
 
             var dailyStats = DailyStats.GetOrAdd(epochTime, new DailyStats(epochTime));
             dailyStats.HandleOperation(operation);
         }
 
+        public void SaveData()
+        {
+            try
+            {
+                _logger.LogInformation("Blocking operation hanlder to save data");
+
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, e.Message);
+            }
+            finally
+            {
+                _queueBlocker.Set();
+                _logger.LogInformation("Finished saving data");
+            }
+        }
         public void OutPutToDiscord()
         {
             if (DailyStats.TryGetValue(_currentDate, out var today))

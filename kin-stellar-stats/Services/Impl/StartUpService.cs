@@ -13,11 +13,12 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
         private readonly IConfigurationRoot _config;
         private readonly IDiscordLogger _logger;
         private readonly IStellarService _stellarService;
-        private readonly DatabaseQueueService _databaseQueueService;
+        //private readonly DatabaseQueueService _databaseQueueService;
         private readonly ManagementContext _managementContext;
 
-        public StartupService(IConfigurationRoot config, IStellarService stellarService, ManagementContext managementContext, DatabaseQueueService databaseQueueService)
+        public StartupService(IConfigurationRoot config, IStellarService stellarService, ManagementContext managementContext)
         {
+            //DatabaseQueueService databaseQueueService
             _config = config;
             _stellarService = stellarService;
             //_databaseQueueService = databaseQueueService;

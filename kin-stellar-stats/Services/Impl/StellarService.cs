@@ -10,7 +10,6 @@ using System.Timers;
 using discord_web_hook_logger;
 using Kin.Horizon.Api.Poller.Database;
 using Kin.Horizon.Api.Poller.Database.StellarObjectWrappers;
-using Kin.Horizon.Api.Poller.Services.Model;
 using Kin.Stellar.Sdk;
 using Kin.Stellar.Sdk.requests;
 using Kin.Stellar.Sdk.responses.operations;
@@ -37,19 +36,22 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
         private readonly Stopwatch _startTime;
         private int _queueCounter;
         private int _maxQueue = 1000;
-        private readonly AutoResetEvent QueueNotifier;
-        private readonly AutoResetEvent QueueNotifier1;
-        private readonly System.Timers.Timer Timer;
+        private readonly AutoResetEvent _queueNotifier;
+        private readonly AutoResetEvent _queueNotifier1;
+        private readonly AutoResetEvent _dataSaveBlocker;
+        private readonly System.Timers.Timer _timer;
 
-        public StellarService(IConfigurationRoot config, ManagementContext managementContext, DatabaseQueueService databaseQueueService)
+        public StellarService(IConfigurationRoot config, ManagementContext managementContext)
         {
+            // DatabaseQueueService databaseQueueService
             _config = config;
-            QueueNotifier = new AutoResetEvent(false);
-            QueueNotifier1 = new AutoResetEvent(false);
+            _queueNotifier = new AutoResetEvent(false);
+            _queueNotifier1 = new AutoResetEvent(false);
+            _dataSaveBlocker = new AutoResetEvent(false);
            
             _managementContext = managementContext;
             //_databaseQueueService = databaseQueueService;
-            _statsManager = new StatsManager();
+            _statsManager = new StatsManager(_dataSaveBlocker);
             _logger = DicordLogFactory.GetLogger<StellarService>(GlobalVariables.DiscordId,
                 GlobalVariables.DiscordToken);
             _operationsToHandleQueue = new ConcurrentQueue<OperationResponse>();
@@ -62,10 +64,10 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
             var queueThread = new Task(HandleResponseQueue, TaskCreationOptions.LongRunning);
             queueThread.Start();
 
-            Timer = new System.Timers.Timer(50);
-            Timer.Elapsed += Timer_tick;
-            Timer.Enabled = true;
-            Timer.Start();
+            _timer = new System.Timers.Timer(50);
+            _timer.Elapsed += Timer_tick;
+            _timer.Enabled = true;
+            _timer.Start();
         }
 
 
@@ -86,7 +88,7 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
             _eventSource = _operationsRequestBuilder.Stream((sender, response) =>
             {
                 _operationsToHandleQueue.Enqueue(response);
-                QueueNotifier.Set();
+                //_queueNotifier.Set();
 
                 if (_sendQueueInfoMessageTime == null || DateTime.Now >= _sendQueueInfoMessageTime)
                 {
@@ -111,7 +113,7 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
         private void Timer_tick(object sender, ElapsedEventArgs e)
         {
             if (_queueCounter < _maxQueue)
-                QueueNotifier1.Set();
+                _queueNotifier1.Set();
 
         }
 
@@ -119,12 +121,16 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
         {
             while (true)
             {
-                QueueNotifier.WaitOne();
+                Thread.Sleep(1);
+               // _queueNotifier.WaitOne();
                 while (!_operationsToHandleQueue.IsEmpty)
                 {
 
-                    if (_queueCounter >= _maxQueue) QueueNotifier1.WaitOne();
+                    if (_queueCounter >= _maxQueue) _queueNotifier1.WaitOne();
                     if (!_operationsToHandleQueue.TryDequeue(out var operation)) continue;
+
+                    if (_totalRequest > 0 && _totalRequest % 3000 == 0)
+                        _dataSaveBlocker.WaitOne();
 
                     HandleResponse(operation);
                 }
@@ -136,9 +142,9 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
             Interlocked.Increment(ref _queueCounter);
             try
             {
-                var transactions =
-                    await _server.Transactions.Transaction(operation.TransactionHash).ConfigureAwait(false);
+                var transactions = await _server.Transactions.Transaction(operation.TransactionHash).ConfigureAwait(false);
                 var flattenOperation = FlattenOperationFactory.GibeFlattenedOperation(operation, transactions);
+
                 _statsManager.HandleOperation(flattenOperation);
             }
             catch (Exception e)

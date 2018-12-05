@@ -75,7 +75,7 @@ namespace Kin.Horizon.Api.Poller
                     options.UseMySql(_configuration["DatabaseService:ConnectionString"]);
                     options.EnableSensitiveDataLogging();
                 })
-                .AddSingleton<DatabaseQueueService>()
+                //.AddSingleton<DatabaseQueueService>()
                 .AddSingleton<IStellarService, StellarService>()
                 .AddSingleton<StartupService>();
         }
