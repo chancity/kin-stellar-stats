@@ -138,14 +138,15 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
                         if (dailyStatsValue.ActiveWalletsNotSaved.Count > 0)
                         {
                             var wallets = dailyStatsValue.ActiveWalletsNotSavedCopy();
-var newUserIDs = wallets.Select(u => u.UserId).Distinct().ToArray();
-var usersInDb = _kinstatsContext.ActiveWallet
-    .Where(u => newUserIDs.Contains(u.Address) && u.Year == (ushort)dailyStatsValue.Date.Year  && u.Day == (ushort)dailyStatsValue.Date.Day)
-                               .Select(u => u.Address).ToArray();
-var usersNotInDb = wallets.Where(u => !usersInDb.Contains(u));
-foreach(string user in usersNotInDb){
-    await _kinstatsContext.AddAsync(new ActiveWallet(){Day = (ushort)dailyStatsValue.Date.Day, Year = (ushort)dailyStatsValue.Date.Year, Address = user });
-}
+                            var walletsInDb = _kinstatsContext.ActiveWallet
+                                .Where(u => wallets.Contains(u.Address) && u.Year == (ushort)dailyStatsValue.Date.Year  && u.Day == (ushort)dailyStatsValue.Date.Day)
+                                                           .Select(u => u.Address).ToArray();
+                            var walletsNotInDb = wallets.Where(u => !walletsInDb.Contains(u));
+
+                            foreach(string user in walletsNotInDb)
+                            {
+                                await _kinstatsContext.AddAsync(new ActiveWallet(){Day = (ushort)dailyStatsValue.Date.Day, Year = (ushort)dailyStatsValue.Date.Year, Address = user });
+                            }
                             
 
 
