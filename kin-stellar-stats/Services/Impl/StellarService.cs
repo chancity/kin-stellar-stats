@@ -148,6 +148,7 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
             catch (Exception e)
             {
                 _logger.LogDebug(e.Message);
+                _operationsToHandleQueue.Enqueue(operation);
             }
             finally
             {
