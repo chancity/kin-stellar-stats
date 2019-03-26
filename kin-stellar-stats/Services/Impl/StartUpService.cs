@@ -13,16 +13,13 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
         private readonly IConfigurationRoot _config;
         private readonly IDiscordLogger _logger;
         private readonly IStellarService _stellarService;
-        //private readonly DatabaseQueueService _databaseQueueService;
-        private readonly KinstatsContext _kinstatsContext;
 
-        public StartupService(IConfigurationRoot config, IStellarService stellarService, KinstatsContext kinstatsContext)
+        public StartupService(IConfigurationRoot config, IStellarService stellarService)
         {
             //DatabaseQueueService databaseQueueService
             _config = config;
             _stellarService = stellarService;
-            //_databaseQueueService = databaseQueueService;
-            _kinstatsContext = kinstatsContext;
+
             _logger = DicordLogFactory.GetLogger<StartupService>(GlobalVariables.DiscordId, GlobalVariables.DiscordToken);
         }
 
@@ -30,17 +27,6 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
         {
             try
             {
-                try
-                {
-                    await _kinstatsContext.Database.EnsureCreatedAsync();
-                    await _kinstatsContext.Database.MigrateAsync();
-                }
-                catch (Exception e)
-                {
-                    _logger.LogError(e.Message, e);
-                }
-
-
                // _databaseQueueService.StartAsync();
                 await _stellarService.StartAsync();
                 _logger.LogInformation("Startup service has completed");

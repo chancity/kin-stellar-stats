@@ -5,22 +5,83 @@ using Kin.Stellar.Sdk.responses.operations;
 namespace Kin.Horizon.Api.Poller.Services.Model
 {
 
-    public class FlattenOperationFactory
+    public class OperationRequestFactory
     {
-        public static FlattenedOperation GibeFlattenedOperation(OperationResponse operationResponse, TransactionResponse transactionResponse)
+        public static OperationRequest GibeFlattenedOperation(OperationResponse operationResponse, TransactionResponse transactionResponse)
         {
             if (operationResponse is PaymentOperationResponse paymentOperation)
             {
-                return new FlattenPaymentOperation(paymentOperation, transactionResponse);
+                var po = new FlattenPaymentOperation(paymentOperation, transactionResponse);
+
+                return new OperationRequest()
+                {
+                    Amount = (long)po.Amount,
+                    AppId = GetAppId(po),
+                    Cursor = "operation",
+                    EpochTime = po.CreatedAt.ToUnixTimeSeconds(),
+                    OperationType = OperationType.Payment,
+                    PagingToken = po.Id,
+                    Recipient = po.To,
+                    Sender = po.From
+                };
             }
 
             if (operationResponse is CreateAccountOperationResponse createAccountOperation)
             {
-                return new FlattenCreateAccountOperation(createAccountOperation, transactionResponse);
+                var ca = new FlattenCreateAccountOperation(createAccountOperation, transactionResponse);
+
+                return new OperationRequest()
+                {
+                    Amount = (long)ca.StartingBalance,
+                    AppId = GetAppId(ca),
+                    Cursor = "operation",
+                    EpochTime = ca.CreatedAt.ToUnixTimeSeconds(),
+                    OperationType = OperationType.CreateAccount,
+                    PagingToken = ca.Id,
+                    Recipient = ca.Account,
+                    Sender = ca.Funder
+                };
             }
 
 
-            return new FlattenedOperation(operationResponse, transactionResponse);
+            var op = new FlattenedOperation(operationResponse, transactionResponse);
+
+            return new OperationRequest()
+            {
+                Amount = 0,
+                AppId = GetAppId(op),
+                Cursor = "operation",
+                EpochTime = op.CreatedAt.ToUnixTimeSeconds(),
+                OperationType = OperationType.Operation,
+                PagingToken = op.Id,
+                Recipient = "",
+                Sender = op.SourceAccount
+            };
+        }
+
+        public static string GetAppId(FlattenedOperation operation)
+        {
+            string appId = "not_set";
+
+            try
+            {
+                if (!string.IsNullOrEmpty(operation.Memo))
+                {
+                    string[] appIdSplit = operation.Memo.Split('-');
+
+                    if (appIdSplit.Length >= 2)
+                    {
+                        appId = appIdSplit[1];
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+
+
+            return appId;
         }
     }
     public class FlattenedOperation
@@ -82,7 +143,7 @@ namespace Kin.Horizon.Api.Poller.Services.Model
             Account = operationResponse.Account.AccountId;
             Funder = operationResponse.Funder.AccountId;
             double.TryParse(operationResponse.StartingBalance, out var startingBalance);
-            StartingBalance = startingBalance;
+            StartingBalance = startingBalance < 0 ? 0 : startingBalance;
         }
     }
 }

@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Reflection;
 using System.Threading.Tasks;
 using discord_web_hook_logger;
@@ -24,11 +26,12 @@ namespace Kin.Horizon.Api.Poller
 
         public static Dictionary<string, string> DefaultConfiguration = new Dictionary<string, string>
         {
-            {"StellarService:HorizonHostname", "https://horizon-kin-ecosystem.kininfrastructure.com/"},
-            {"DatabaseService:ConnectionString", "server=localhost;database=kin_test;uid=root;pwd=password"},
-            {"DatabaseService:RequestPerMinute", "3000"},
+            {"StellarService:HorizonHostname", "https://horizon-block-explorer.kininfrastructure.com"},
             {"DiscordLogger:Id", "519614392057200670"},
-            {"DiscordLogger:Token", "qggUhn6skbpcLlrU0bq2WYQfuOCORsqVE9BAhmxZsJczPgzcoTpnvG8c8jeYLvbmYljr"}
+            {"DiscordLogger:Token", "qggUhn6skbpcLlrU0bq2WYQfuOCORsqVE9BAhmxZsJczPgzcoTpnvG8c8jeYLvbmYljr"},
+            { "KinStats_Api", "http://127.0.0.1:5000"},
+            { "KinStats_Api_Key", "SuperSecretYo"}
+
         };
     }
     public class Startup
@@ -77,13 +80,14 @@ namespace Kin.Horizon.Api.Poller
 
         private void ConfigureServices(IServiceCollection services)
         {
-            services
-                .AddSingleton(_configuration)
-                .AddDbContext<KinstatsContext>(options =>
-                {
-                    options.UseMySql(_configuration["DatabaseService:ConnectionString"]);
-                    options.EnableSensitiveDataLogging();
-                })
+            var apiKey = _configuration["KinStats_Api_Key"];
+            HttpClient httpClient = new HttpClient();
+            httpClient.BaseAddress = new Uri(_configuration["KinStats_Api"]);
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+            services.AddSingleton(_configuration)
+                .AddSingleton(httpClient)
+                .AddSingleton<StatsManager>()
                 .AddSingleton<IStellarService, StellarService>()
                 .AddSingleton<StartupService>();
         }

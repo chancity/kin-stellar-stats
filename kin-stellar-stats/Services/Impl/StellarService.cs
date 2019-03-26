@@ -4,12 +4,14 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
 using discord_web_hook_logger;
 using Kin.Horizon.Api.Poller.Database;
 using Kin.Horizon.Api.Poller.Services.Model;
+using Kin.Horizon.Api.Poller.Services.Model.ApiResponse;
 using Kin.Stellar.Sdk;
 using Kin.Stellar.Sdk.requests;
 using Kin.Stellar.Sdk.responses.operations;
@@ -17,14 +19,14 @@ using log4net;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 
 namespace Kin.Horizon.Api.Poller.Services.Impl
 {
     public class StellarService : IStellarService
     {
         private readonly IConfigurationRoot _config;
-        private readonly KinstatsContext _kinstatsContext;
-        //private readonly DatabaseQueueService _databaseQueueService;
+
         private readonly IDiscordLogger _logger;
         private readonly Server _server;
         private IEventSource _eventSource;
@@ -35,20 +37,20 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
         private long _totalRequest;
         private readonly Stopwatch _startTime;
         private int _queueCounter;
-        private int _maxQueue = 1000;
+        private int _maxQueue = 200;
         private readonly AutoResetEvent _queueNotifier1;
         private readonly System.Timers.Timer _timer;
-
-        public StellarService(IConfigurationRoot config, KinstatsContext kinstatsContext)
+        private readonly HttpClient _httpClient;
+        public StellarService(IConfigurationRoot config, HttpClient httpClient, StatsManager statsManager)
         {
+            _statsManager = statsManager;
             _config = config;
             _queueNotifier1 = new AutoResetEvent(false);
+            _httpClient = httpClient;
 
-            _kinstatsContext = kinstatsContext;
-            _statsManager = new StatsManager(kinstatsContext);
             _logger = DicordLogFactory.GetLogger<StellarService>(GlobalVariables.DiscordId,GlobalVariables.DiscordToken);
             _operationsToHandleQueue = new ConcurrentQueue<OperationResponse>();
-            ServicePointManager.DefaultConnectionLimit = 300;
+            ServicePointManager.DefaultConnectionLimit = 150;
             _logger.LogInformation($"Stellar service is using endpoint {_config["StellarService:HorizonHostname"]}");
             _server = new Server(_config["StellarService:HorizonHostname"]);
             Network.UsePublicNetwork();
@@ -69,12 +71,12 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
         public async Task StartAsync()
         {
             _startTime.Start();
-            ulong pagingTokenLong = await GetCurrentCursorFromDatabase("operation");
+            long pagingTokenLong = await GetCurrentCursorFromDatabase("operation");
             string pagingToken = pagingTokenLong.ToString();
+
 
             _logger.LogDebug($"Starting page token is {pagingToken}");
 
-           // List<Task> task = new List<Task>();
             _operationsRequestBuilder = _server.Operations.Cursor(pagingToken).Limit(200);
             _eventSource = _operationsRequestBuilder.Stream((sender, response) =>
             {
@@ -114,27 +116,13 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
                 {
 
                     if (_queueCounter >= _maxQueue) _queueNotifier1.WaitOne();
-
-                    if (_totalRequest != 0 && _totalRequest % 2000 == 0)
-                    {
-                        await _statsManager.SaveData();
-                    }
-
                     if (!_operationsToHandleQueue.TryDequeue(out var operation)) continue;
-
-                    var success = await _statsManager.PopulateSavedActiveWallets(operation);
-
-                    if (success)
-                    {
-                        HandleResponse(operation);
-                    }
-                    else
-                    {
-                        _operationsToHandleQueue.Enqueue(operation);
-                    }
+                    HandleResponse(operation);
+  
                 }
             }
         }
+
         private async Task HandleResponse(OperationResponse operation)
         {
             Interlocked.Increment(ref _totalRequest);
@@ -142,8 +130,10 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
             try
             {
                 var transactions = await _server.Transactions.Transaction(operation.TransactionHash).ConfigureAwait(false);
-                var flattenOperation = FlattenOperationFactory.GibeFlattenedOperation(operation, transactions);
-                _statsManager.HandleOperation(flattenOperation);
+                var operationRequest = OperationRequestFactory.GibeFlattenedOperation(operation, transactions);
+
+   
+                await _statsManager.HandleOperation(operationRequest);
             }
             catch (Exception e)
             {
@@ -156,10 +146,40 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
             }
         }
 
-        private async Task<ulong> GetCurrentCursorFromDatabase(string cursorType)
+        private async Task<long> GetCurrentCursorFromDatabase(string cursorType)
         {
-            var pagination = await _kinstatsContext.Pagination.AsNoTracking().SingleOrDefaultAsync(x => x.CursorType == cursorType);
-            return pagination?.CursorId ?? 0;
+            try
+            {
+                
+                var ret = await _httpClient.GetStringAsync("/api/pagingtoken/operation").ConfigureAwait(false);
+                var pt = JsonConvert.DeserializeObject<BaseResponseData<PagingToken>>(ret);
+
+                return pt.Data.Value;
+
+            }
+            catch (HttpRequestException hex)
+            {
+                Console.WriteLine(hex);
+                if (hex.Message.Contains("Response status code does not indicate success: 404 (Not Found)."))
+                {
+                    return 0;
+                }
+
+                throw;
+            }
+            catch (WebException wex)
+            {
+
+                Console.WriteLine(wex);
+                wex?.Response?.Dispose();
+                throw;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
+
         }
     }
 }
