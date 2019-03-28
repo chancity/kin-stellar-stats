@@ -37,7 +37,7 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
         private long _totalRequest;
         private readonly Stopwatch _startTime;
         private int _queueCounter;
-        private int _maxQueue = 200;
+        private int _maxQueue = 400;
         private readonly AutoResetEvent _queueNotifier1;
         private readonly System.Timers.Timer _timer;
         private readonly HttpClient _httpClient;
@@ -50,7 +50,7 @@ namespace Kin.Horizon.Api.Poller.Services.Impl
 
             _logger = DicordLogFactory.GetLogger<StellarService>(GlobalVariables.DiscordId,GlobalVariables.DiscordToken);
             _operationsToHandleQueue = new ConcurrentQueue<OperationResponse>();
-            ServicePointManager.DefaultConnectionLimit = 150;
+            ServicePointManager.DefaultConnectionLimit = 100;
             _logger.LogInformation($"Stellar service is using endpoint {_config["StellarService:HorizonHostname"]}");
             _server = new Server(_config["StellarService:HorizonHostname"]);
             Network.UsePublicNetwork();
