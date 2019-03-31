@@ -1,7 +1,7 @@
 # kin-stellar-stats
 
 ## docker image
-https://hub.docker.com/r/chancity/kin-leaderboard-api
+https://hub.docker.com/r/chancity/kin-stellar-stats
 
 ## environment variables
 {"StellarService:HorizonHostname", "https://horizon-block-explorer.kininfrastructure.com"},
